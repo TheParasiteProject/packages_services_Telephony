@@ -99,7 +99,6 @@ import android.widget.TextView;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AlertDialog.Builder;
-import androidx.appcompat.app.AppCompatActivity;
 
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
