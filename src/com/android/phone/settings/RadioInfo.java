@@ -99,7 +99,6 @@ import android.widget.TextView;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AlertDialog.Builder;
-import androidx.appcompat.app.AppCompatActivity;
 
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
@@ -108,6 +107,7 @@ import com.android.internal.telephony.flags.FeatureFlags;
 import com.android.internal.telephony.flags.FeatureFlagsImpl;
 import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.phone.R;
+import com.android.settingslib.collapsingtoolbar.CollapsingToolbarBaseActivity;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;
