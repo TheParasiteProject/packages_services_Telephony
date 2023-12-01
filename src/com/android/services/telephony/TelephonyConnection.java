@@ -1610,6 +1610,20 @@ abstract class TelephonyConnection extends Connection implements Holdable, Commu
                     mOriginalConnection.getOrigDialString());
         }
 
+        // When a call is redialed as an emergency call, a handover may occur.
+        // In that case, mIsNetworkIdentifiedEmergencyCall is overwritten
+        // along with the Connection Property. The associated Call object
+        // is not similarly reset; once the call is an emergency call,
+        // then it is always an emergency call. Therefore, the
+        // Call object and Connection Property can disagree as
+        // to whether or not the call is an emergency call.
+        // To prevent that scenario, mIsNetworkIdentifiedEmergencyCall is
+        // cached here.
+        boolean isEmergency = false;
+        if (mOriginalConnection != null) {
+            isEmergency = mOriginalConnection.isNetworkIdentifiedEmergencyCall();
+        }
+
         clearOriginalConnection();
         mOriginalConnectionExtras.clear();
         mOriginalConnection = originalConnection;
@@ -1622,7 +1636,8 @@ abstract class TelephonyConnection extends Connection implements Holdable, Commu
         // Set video state and capabilities
         setTelephonyVideoState(mOriginalConnection.getVideoState());
         setOriginalConnectionCapabilities(mOriginalConnection.getConnectionCapabilities());
-        setIsNetworkIdentifiedEmergencyCall(mOriginalConnection.isNetworkIdentifiedEmergencyCall());
+        setIsNetworkIdentifiedEmergencyCall(isEmergency ||
+                mOriginalConnection.isNetworkIdentifiedEmergencyCall());
         setIsAdhocConferenceCall(mOriginalConnection.isAdhocConference());
         setAudioModeIsVoip(mOriginalConnection.getAudioModeIsVoip());
         setTelephonyVideoProvider(mOriginalConnection.getVideoProvider());
@@ -1640,7 +1655,7 @@ abstract class TelephonyConnection extends Connection implements Holdable, Commu
 
         TelephonyManager tm = (TelephonyManager) getPhone().getContext()
                 .getSystemService(Context.TELEPHONY_SERVICE);
-        if (tm.isEmergencyNumber(mOriginalConnection.getAddress())) {
+        if (isEmergency || tm.isEmergencyNumber(mOriginalConnection.getAddress())) {
             mTreatAsEmergencyCall = true;
         }
         // Propagate VERSTAT for IMS calls.
@@ -2476,6 +2491,14 @@ abstract class TelephonyConnection extends Connection implements Holdable, Commu
         if (mOriginalConnection == null) {
             return;
         }
+
+        TelephonyManager tm = (TelephonyManager) getPhone().getContext()
+                .getSystemService(Context.TELEPHONY_SERVICE);
+        if (isNetworkIdentifiedEmergencyCall() ||
+                tm.isEmergencyNumber(mOriginalConnection.getAddress())) {
+            mTreatAsEmergencyCall = true;
+        }
+
         Call.State newState;
         // If the state is overridden and the state of the original connection hasn't changed since,
         // then we continue in the overridden state, else we go to the original connection's state.
