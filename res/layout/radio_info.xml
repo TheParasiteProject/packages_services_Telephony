@@ -22,8 +22,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:layoutDirection="locale"
-    android:textDirection="locale"
-    android:nestedScrollingEnabled="true">
+    android:textDirection="locale">
 
     <LinearLayout style="@style/info_layout"
         android:descendantFocusability="beforeDescendants"
