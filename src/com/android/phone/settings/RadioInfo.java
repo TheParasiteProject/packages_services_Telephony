@@ -107,7 +107,6 @@ import com.android.internal.telephony.flags.FeatureFlags;
 import com.android.internal.telephony.flags.FeatureFlagsImpl;
 import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.phone.R;
-import com.android.settingslib.collapsingtoolbar.CollapsingToolbarBaseActivity;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;
