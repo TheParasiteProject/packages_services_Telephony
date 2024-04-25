@@ -212,52 +212,58 @@
             android:background="?android:attr/listDivider" />
 
         <!-- Radio Power -->
-        <Switch android:id="@+id/radio_power"
-                android:textSize="14sp"
-                android:layout_marginTop="8dip"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/radio_info_radio_power"/>
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/radio_power"
+            android:textSize="14sp"
+            android:layout_marginTop="8dip"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/radio_info_radio_power"/>
 
         <!-- Simulate out of service -->
-        <Switch android:id="@+id/simulate_out_of_service"
-                android:textSize="14sp"
-                android:layout_marginTop="8dip"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/simulate_out_of_service_string"/>
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/simulate_out_of_service"
+            android:textSize="14sp"
+            android:layout_marginTop="8dip"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/simulate_out_of_service_string"/>
 
         <!-- VoLTE provisioned -->
-        <Switch android:id="@+id/volte_provisioned_switch"
-                android:textSize="14sp"
-                android:layout_marginTop="8dip"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/volte_provisioned_switch_string"/>
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/volte_provisioned_switch"
+            android:textSize="14sp"
+            android:layout_marginTop="8dip"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/volte_provisioned_switch_string"/>
 
         <!-- VT provisioned -->
-        <Switch android:id="@+id/vt_provisioned_switch"
-                android:textSize="14sp"
-                android:layout_marginTop="8dip"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/vt_provisioned_switch_string"/>
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/vt_provisioned_switch"
+            android:textSize="14sp"
+            android:layout_marginTop="8dip"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/vt_provisioned_switch_string"/>
 
         <!-- Wifi Calling provisioned -->
-        <Switch android:id="@+id/wfc_provisioned_switch"
-                android:textSize="14sp"
-                android:layout_marginTop="8dip"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/wfc_provisioned_switch_string"/>
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/wfc_provisioned_switch"
+            android:textSize="14sp"
+            android:layout_marginTop="8dip"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/wfc_provisioned_switch_string"/>
 
         <!-- EAB/Presence provisioned -->
-        <Switch android:id="@+id/eab_provisioned_switch"
-                android:textSize="14sp"
-                android:layout_marginTop="8dip"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/eab_provisioned_switch_string"/>
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/eab_provisioned_switch"
+            android:textSize="14sp"
+            android:layout_marginTop="8dip"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/eab_provisioned_switch_string"/>
 
         <!-- Horizontal Rule -->
         <View
@@ -266,29 +272,32 @@
             android:background="?android:attr/listDivider" />
 
         <!-- Enable/Disable CBRS data -->
-        <Switch android:id="@+id/cbrs_data_switch"
-                android:textSize="14sp"
-                android:layout_marginTop="8dip"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/cbrs_data_switch_string" />
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/cbrs_data_switch"
+            android:textSize="14sp"
+            android:layout_marginTop="8dip"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/cbrs_data_switch_string" />
 
         <!-- Switch between SSSS(single sim single standby) and DSDS(dual sim dual standby). -->
-        <Switch android:id="@+id/dsds_switch"
-                android:textSize="14sp"
-                android:layout_marginTop="8dip"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/dsds_switch_string" />
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/dsds_switch"
+            android:textSize="14sp"
+            android:layout_marginTop="8dip"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/dsds_switch_string" />
 
         <!-- Set removable eSIM as default eUICC. -->
-        <Switch android:id="@+id/removable_esim_switch"
-                android:textSize="14sp"
-                android:layout_marginTop="8dip"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:enabled="false"
-                android:text="@string/removable_esim_string" />
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/removable_esim_switch"
+            android:textSize="14sp"
+            android:layout_marginTop="8dip"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:enabled="false"
+            android:text="@string/removable_esim_string" />
 
         <!-- Horizontal Rule -->
         <View
