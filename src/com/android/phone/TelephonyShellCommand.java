@@ -233,6 +233,10 @@ public class TelephonyShellCommand extends BasicShellCommandHandler {
     private static final String GET_IMEI = "get-imei";
     private static final String GET_SIM_SLOTS_MAPPING = "get-sim-slots-mapping";
     private static final String COMMAND_DELETE_IMSI_KEY = "delete_imsi_key";
+
+    private static final String SEND_RIL_EVENT = "send-ril-event";
+    private static final String RIL_UNSOL_STK_PROACTIVE_CMD = "stk-proactive-cmd";
+
     // Take advantage of existing methods that already contain permissions checks when possible.
     private final ITelephony mInterface;
 
@@ -240,6 +244,7 @@ public class TelephonyShellCommand extends BasicShellCommandHandler {
     private CarrierConfigManager mCarrierConfigManager;
     private TelephonyRegistryManager mTelephonyRegistryManager;
     private Context mContext;
+    private FakeRil mFakeRil;
 
     private enum CcType {
         BOOLEAN, DOUBLE, DOUBLE_ARRAY, INT, INT_ARRAY, LONG, LONG_ARRAY, STRING,
@@ -334,6 +339,7 @@ public class TelephonyShellCommand extends BasicShellCommandHandler {
         mTelephonyRegistryManager = (TelephonyRegistryManager)
                 context.getSystemService(Context.TELEPHONY_REGISTRY_SERVICE);
         mContext = context;
+        mFakeRil = new FakeRil(context);
     }
 
     @Override
@@ -434,6 +440,8 @@ public class TelephonyShellCommand extends BasicShellCommandHandler {
                 return handleOverrideCarrierRoamingNtnEligibilityChanged();
             case COMMAND_DELETE_IMSI_KEY:
                 return handleDeleteTestImsiKey();
+            case SEND_RIL_EVENT:
+                return handleRilEvent();
             default: {
                 return handleDefaultCommands(cmd);
             }
@@ -489,6 +497,7 @@ public class TelephonyShellCommand extends BasicShellCommandHandler {
         onHelpImei();
         onHelpSatellite();
         onHelpDomainSelection();
+        onHelpRilEvent();
     }
 
     private void onHelpD2D() {
@@ -877,6 +886,15 @@ public class TelephonyShellCommand extends BasicShellCommandHandler {
         pw.println("    Sets the service defined in COMPONENT_NAME to be bound");
         pw.println("  domainselection clear-dss-override");
         pw.println("    Clears DomainSelectionService override.");
+    }
+
+    private void onHelpRilEvent() {
+        PrintWriter pw = getOutPrintWriter();
+        pw.println("RIL Commands:");
+        pw.println("  send-ril-event stk-proactive-cmd [-s SLOT-ID] [-t TLV]");
+        pw.println("    Sends the RIL_UNSOL_STK_PROACTIVE_COMMAND to CatService. Options are:");
+        pw.println("  -s: the slot ID corresponding to CatService instance");
+        pw.println("  -t: TLV to send in the event");
     }
 
     private int handleImsCommand() {
@@ -4160,5 +4178,47 @@ public class TelephonyShellCommand extends BasicShellCommandHandler {
         }
         phone.resetCarrierKeysForImsiEncryption(true);
         return 1;
+    }
+
+    private int handleRilEvent() {
+        String event = getNextArg();
+        if (event == null) {
+            onHelpRilEvent();
+            return -1;
+        }
+        switch (event) {
+            case RIL_UNSOL_STK_PROACTIVE_CMD:
+                return handleStkProactiveCommand();
+        }
+        return -1;
+    }
+
+    private int handleStkProactiveCommand() {
+        String tlv = null;
+        int slotId = getDefaultSlot();
+        PrintWriter errPw = getErrPrintWriter();
+        String opt;
+        while ((opt = getNextOption()) != null) {
+            switch (opt) {
+                case "-t":
+                    tlv = getNextArgRequired();
+                    break;
+                case "-s":
+                    try {
+                        slotId = Integer.parseInt(getNextArgRequired());
+                    } catch (NumberFormatException e) {
+                        errPw.println(
+                                "send-ril-event stk-proactive-cmd requires an integer as a"
+                                + " SLOT_ID.");
+                        return -1;
+                    }
+                    break;
+            }
+        }
+        if (tlv == null) {
+            errPw.println("send-ril-event stk-proactive-cmd requires a TLV");
+        }
+        mFakeRil.sendProactiveCmdToCatService(slotId, tlv);
+        return 0;
     }
 }
