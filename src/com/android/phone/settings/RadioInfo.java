@@ -105,6 +105,7 @@ import android.widget.TextView;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AlertDialog.Builder;
+import androidx.appcompat.widget.SwitchCompat;
 
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
@@ -305,10 +306,10 @@ public class RadioInfo extends CollapsingToolbarBaseActivity {
     private TextView mNetworkSlicingConfig;
     private TextView mEuiccInfo;
     private EditText mSmsc;
-    private Switch mRadioPowerOnSwitch;
-    private Switch mSimulateOutOfServiceSwitch;
-    private Switch mEnforceSatelliteChannel;
-    private Switch mMockSatellite;
+    private SwitchCompat mRadioPowerOnSwitch;
+    private SwitchCompat mSimulateOutOfServiceSwitch;
+    private SwitchCompat mEnforceSatelliteChannel;
+    private SwitchCompat mMockSatellite;
     private Button mPingTestButton;
     private Button mUpdateSmscButton;
     private Button mRefreshSmscButton;
@@ -318,13 +319,13 @@ public class RadioInfo extends CollapsingToolbarBaseActivity {
     private Button mEsosButton;
     private Button mSatelliteEnableNonEmergencyModeButton;
     private Button mEsosDemoButton;
-    private Switch mImsVolteProvisionedSwitch;
-    private Switch mImsVtProvisionedSwitch;
-    private Switch mImsWfcProvisionedSwitch;
-    private Switch mEabProvisionedSwitch;
-    private Switch mCbrsDataSwitch;
-    private Switch mDsdsSwitch;
-    private Switch mRemovableEsimSwitch;
+    private SwitchCompat mImsVolteProvisionedSwitch;
+    private SwitchCompat mImsVtProvisionedSwitch;
+    private SwitchCompat mImsWfcProvisionedSwitch;
+    private SwitchCompat mEabProvisionedSwitch;
+    private SwitchCompat mCbrsDataSwitch;
+    private SwitchCompat mDsdsSwitch;
+    private SwitchCompat mRemovableEsimSwitch;
     private Spinner mPreferredNetworkType;
     private Spinner mMockSignalStrength;
     private Spinner mMockDataNetworkType;
@@ -697,10 +698,10 @@ public class RadioInfo extends CollapsingToolbarBaseActivity {
         cellInfoAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         mCellInfoRefreshRateSpinner.setAdapter(cellInfoAdapter);
 
-        mImsVolteProvisionedSwitch = (Switch) findViewById(R.id.volte_provisioned_switch);
-        mImsVtProvisionedSwitch = (Switch) findViewById(R.id.vt_provisioned_switch);
-        mImsWfcProvisionedSwitch = (Switch) findViewById(R.id.wfc_provisioned_switch);
-        mEabProvisionedSwitch = (Switch) findViewById(R.id.eab_provisioned_switch);
+        mImsVolteProvisionedSwitch = (SwitchCompat) findViewById(R.id.volte_provisioned_switch);
+        mImsVtProvisionedSwitch = (SwitchCompat) findViewById(R.id.vt_provisioned_switch);
+        mImsWfcProvisionedSwitch = (SwitchCompat) findViewById(R.id.wfc_provisioned_switch);
+        mEabProvisionedSwitch = (SwitchCompat) findViewById(R.id.eab_provisioned_switch);
 
         if (!isImsSupportedOnDevice()) {
             mImsVolteProvisionedSwitch.setVisibility(View.GONE);
@@ -709,7 +710,7 @@ public class RadioInfo extends CollapsingToolbarBaseActivity {
             mEabProvisionedSwitch.setVisibility(View.GONE);
         }
 
-        mCbrsDataSwitch = (Switch) findViewById(R.id.cbrs_data_switch);
+        mCbrsDataSwitch = (SwitchCompat) findViewById(R.id.cbrs_data_switch);
         mCbrsDataSwitch.setVisibility(isCbrsSupported() ? View.VISIBLE : View.GONE);
 
         mDsdsSwitch = findViewById(R.id.dsds_switch);
@@ -729,22 +730,22 @@ public class RadioInfo extends CollapsingToolbarBaseActivity {
             mDsdsSwitch.setVisibility(View.GONE);
         }
 
-        mRemovableEsimSwitch = (Switch) findViewById(R.id.removable_esim_switch);
+        mRemovableEsimSwitch = (SwitchCompat) findViewById(R.id.removable_esim_switch);
         if (!IS_USER_BUILD) {
             mRemovableEsimSwitch.setEnabled(true);
             mRemovableEsimSwitch.setChecked(mTelephonyManager.isRemovableEsimDefaultEuicc());
             mRemovableEsimSwitch.setOnCheckedChangeListener(mRemovableEsimChangeListener);
         }
 
-        mRadioPowerOnSwitch = (Switch) findViewById(R.id.radio_power);
+        mRadioPowerOnSwitch = (SwitchCompat) findViewById(R.id.radio_power);
 
-        mSimulateOutOfServiceSwitch = (Switch) findViewById(R.id.simulate_out_of_service);
+        mSimulateOutOfServiceSwitch = (SwitchCompat) findViewById(R.id.simulate_out_of_service);
         if (!Build.isDebuggable()) {
             mSimulateOutOfServiceSwitch.setVisibility(View.GONE);
         }
 
-        mMockSatellite = (Switch) findViewById(R.id.mock_carrier_roaming_satellite);
-        mEnforceSatelliteChannel = (Switch) findViewById(R.id.enforce_satellite_channel);
+        mMockSatellite = (SwitchCompat) findViewById(R.id.mock_carrier_roaming_satellite);
+        mEnforceSatelliteChannel = (SwitchCompat) findViewById(R.id.enforce_satellite_channel);
         if (!Build.isDebuggable()) {
             mMockSatellite.setVisibility(View.GONE);
             mEnforceSatelliteChannel.setVisibility(View.GONE);
