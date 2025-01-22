@@ -1973,6 +1973,10 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
                     request = (MainThreadRequest) ar.userObj;
                     IIntegerConsumer callback =
                             ((Pair<Integer, IIntegerConsumer>) request.argument).second;
+                    if (callback == null) {
+                        Log.w(LOG_TAG, "setSimPower: callback not available.");
+                        break;
+                    }
                     if (ar.exception != null) {
                         loge("setSimPower exception: " + ar.exception);
                         int errorCode = TelephonyManager.CallForwardingInfoCallback
@@ -1992,14 +1996,14 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
                         }
                         try {
                             callback.accept(errorCode);
-                        } catch (RemoteException e) {
+                        } catch (NullPointerException|RemoteException e) {
                             // Ignore if the remote process is no longer available to call back.
                             Log.w(LOG_TAG, "setSimPower: callback not available.");
                         }
                     } else {
                         try {
                             callback.accept(TelephonyManager.SET_SIM_POWER_STATE_SUCCESS);
-                        } catch (RemoteException e) {
+                        } catch (NullPointerException|RemoteException e) {
                             // Ignore if the remote process is no longer available to call back.
                             Log.w(LOG_TAG, "setSimPower: callback not available.");
                         }
