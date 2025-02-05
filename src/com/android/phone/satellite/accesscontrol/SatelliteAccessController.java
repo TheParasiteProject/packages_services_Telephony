@@ -1615,10 +1615,19 @@ public class SatelliteAccessController extends Handler {
     private void sendSatelliteAllowResultToReceivers(int resultCode, Bundle resultData,
             boolean allowed) {
         plogd("sendSatelliteAllowResultToReceivers : resultCode is " + resultCode);
-        if (resultCode == SATELLITE_RESULT_SUCCESS) {
-            updateCurrentSatelliteAllowedState(allowed);
-            mIsCurrentLocationEligibleForNotification = true;
+        switch(resultCode) {
+            case SATELLITE_RESULT_SUCCESS:
+                updateCurrentSatelliteAllowedState(allowed);
+                mIsCurrentLocationEligibleForNotification = true;
+                break;
+
+            case SATELLITE_RESULT_LOCATION_DISABLED:
+                updateCurrentSatelliteAllowedState(allowed);
+                break;
+            default:
+                break;
         }
+
         synchronized (mLock) {
             for (ResultReceiver resultReceiver : mSatelliteAllowResultReceivers) {
                 resultReceiver.send(resultCode, resultData);
