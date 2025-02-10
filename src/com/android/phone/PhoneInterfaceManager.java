@@ -24,11 +24,11 @@ import static android.telephony.TelephonyManager.ENABLE_FEATURE_MAPPING;
 import static android.telephony.TelephonyManager.HAL_SERVICE_NETWORK;
 import static android.telephony.TelephonyManager.HAL_SERVICE_RADIO;
 import static android.telephony.satellite.SatelliteManager.KEY_SATELLITE_COMMUNICATION_ALLOWED;
-import static android.telephony.satellite.SatelliteManager.SATELLITE_RESULT_ACCESS_BARRED;
-import static android.telephony.satellite.SatelliteManager.SATELLITE_RESULT_SUCCESS;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_DISALLOWED_REASON_NOT_PROVISIONED;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_DISALLOWED_REASON_NOT_SUPPORTED;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_DISALLOWED_REASON_UNSUPPORTED_DEFAULT_MSG_APP;
+import static android.telephony.satellite.SatelliteManager.SATELLITE_RESULT_ACCESS_BARRED;
+import static android.telephony.satellite.SatelliteManager.SATELLITE_RESULT_SUCCESS;
 
 import static com.android.internal.telephony.PhoneConstants.PHONE_TYPE_CDMA;
 import static com.android.internal.telephony.PhoneConstants.PHONE_TYPE_GSM;
@@ -10473,8 +10473,12 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
 
         if (!mApp.getResources().getBoolean(
                 com.android.internal.R.bool.config_force_phone_globals_creation)) {
-            enforceTelephonyFeatureWithException(getCurrentPackageName(),
-                    PackageManager.FEATURE_TELEPHONY_CALLING, "isEmergencyNumber");
+            enforceTelephonyFeatureWithException(
+                    getCurrentPackageName(),
+                    Arrays.asList(
+                            PackageManager.FEATURE_TELEPHONY_CALLING,
+                            PackageManager.FEATURE_TELEPHONY_MESSAGING),
+                    "isEmergencyNumber");
         }
 
         final long identity = Binder.clearCallingIdentity();
@@ -14812,6 +14816,40 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
             throw new UnsupportedOperationException(
                     methodName + " is unsupported without " + telephonyFeature);
         }
+    }
+
+    /**
+     * Make sure the device has at least one of the required telephony feature
+     *
+     * @throws UnsupportedOperationException if the device does not have any of the required
+     *     telephony feature
+     */
+    private void enforceTelephonyFeatureWithException(
+            @Nullable String callingPackage,
+            @NonNull List<String> anyOfTelephonyFeatures,
+            @NonNull String methodName) {
+        if (callingPackage == null || mPackageManager == null) {
+            return;
+        }
+
+        if (!CompatChanges.isChangeEnabled(ENABLE_FEATURE_MAPPING, callingPackage,
+                Binder.getCallingUserHandle())
+                || mVendorApiLevel < Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+            // Skip to check associated telephony feature,
+            // if compatibility change is not enabled for the current process or
+            // the SDK version of vendor partition is less than Android V.
+            return;
+        }
+        for (String feature : anyOfTelephonyFeatures) {
+            if (mPackageManager.hasSystemFeature(feature)) {
+                // At least one feature is present, so the requirement is satisfied.
+                return;
+            }
+        }
+
+        // No features were found.
+        throw new UnsupportedOperationException(
+                methodName + " is unsupported without any of " + anyOfTelephonyFeatures);
     }
 
     /**
