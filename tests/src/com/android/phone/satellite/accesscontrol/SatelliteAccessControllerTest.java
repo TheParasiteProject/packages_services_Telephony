@@ -421,7 +421,6 @@ public class SatelliteAccessControllerTest extends TelephonyTestBase {
                 .putInt(anyString(), anyInt());
         doNothing().when(mMockSharedPreferencesEditor).apply();
 
-        when(mMockFeatureFlags.satellitePersistentLogging()).thenReturn(true);
         when(mMockFeatureFlags.geofenceEnhancementForBetterUx()).thenReturn(true);
         when(mMockFeatureFlags.carrierRoamingNbIotNtn()).thenReturn(true);
 
