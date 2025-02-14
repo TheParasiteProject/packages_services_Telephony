@@ -839,7 +839,6 @@ public class SatelliteAccessController extends Handler {
                                 + " does not exist");
                         mOverriddenSatelliteS2CellFile = null;
                     }
-                    ///TODO :: need to check when thi will be reloaded this map
                     mCachedAccessRestrictionMap.clear();
                 } else {
                     mOverriddenSatelliteS2CellFile = null;
@@ -1497,8 +1496,13 @@ public class SatelliteAccessController extends Handler {
         }
     }
 
+    /**
+     * Returns a list of satellite country codes.
+     *
+     * @return The list of satellite country codes.
+     */
     @NonNull
-    private List<String> getSatelliteCountryCodes() {
+    public List<String> getSatelliteCountryCodes() {
         synchronized (mLock) {
             if (mIsOverlayConfigOverridden) {
                 return mOverriddenSatelliteCountryCodes;
@@ -1507,8 +1511,13 @@ public class SatelliteAccessController extends Handler {
         }
     }
 
+    /**
+     * Returns a satellite s2 cell file
+     *
+     * @return The file of satellite s2 cell
+     */
     @Nullable
-    protected File getSatelliteS2CellFile() {
+    public File getSatelliteS2CellFile() {
         synchronized (mLock) {
             if (mIsOverlayConfigOverridden) {
                 return mOverriddenSatelliteS2CellFile;
@@ -1517,8 +1526,13 @@ public class SatelliteAccessController extends Handler {
         }
     }
 
+    /**
+     * Returns a satellite access config file
+     *
+     * @return The file of satellite access config
+     */
     @Nullable
-    protected File getSatelliteAccessConfigFile() {
+    public File getSatelliteAccessConfigFile() {
         synchronized (mLock) {
             if (mIsOverlayConfigOverridden) {
                 logd("mIsOverlayConfigOverridden: " + mIsOverlayConfigOverridden);
@@ -1532,8 +1546,12 @@ public class SatelliteAccessController extends Handler {
         }
     }
 
-
-    private boolean isSatelliteAllowAccessControl() {
+    /**
+     * Checks if satellite access control is allowed.
+     *
+     * @return {@code true} if satellite access control is allowed, {@code false} otherwise.
+     */
+    public boolean isSatelliteAllowAccessControl() {
         synchronized (mLock) {
             if (mIsOverlayConfigOverridden) {
                 return mOverriddenIsSatelliteAllowAccessControl;
@@ -2699,7 +2717,6 @@ public class SatelliteAccessController extends Handler {
         return accessAllowed;
     }
 
-
     @Nullable
     protected String getSatelliteConfigurationFileNameFromOverlayConfig(
             @NonNull Context context) {
@@ -3343,6 +3360,17 @@ public class SatelliteAccessController extends Handler {
             satelliteDisallowedReasons = new ArrayList<>(mSatelliteDisallowedReasons);
         }
         return satelliteDisallowedReasons;
+    }
+
+    /**
+     * Returns the satellite access configuration version.
+     *
+     * If the satellite config data hasn't been updated by configUpdater,
+     * it returns 0. If it has been updated, it returns the updated version information.
+     */
+    @NonNull
+    public int getSatelliteAccessConfigVersion() {
+        return mSatelliteAccessConfigVersion;
     }
 
     private void plogv(@NonNull String log) {
