@@ -1341,8 +1341,6 @@ public class PhoneGlobals extends ContextWrapper {
         pw.increaseIndent();
         pw.println("FeatureFlags:");
         pw.increaseIndent();
-        pw.println("dismissNetworkSelectionNotificationOnSimDisable="
-                + mFeatureFlags.dismissNetworkSelectionNotificationOnSimDisable());
         pw.decreaseIndent();
         pw.println("mCurrentRoamingNotification=" + mCurrentRoamingNotification);
         pw.println("mDefaultDataSubId=" + mDefaultDataSubId);
