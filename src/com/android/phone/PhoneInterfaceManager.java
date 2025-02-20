@@ -10442,8 +10442,12 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
             throw new SecurityException("Requires READ_PHONE_STATE permission.");
         }
 
-        enforceTelephonyFeatureWithException(callingPackage,
-                PackageManager.FEATURE_TELEPHONY_CALLING, "getEmergencyNumberList");
+        enforceTelephonyFeatureWithException(
+                callingPackage,
+                Arrays.asList(
+                        PackageManager.FEATURE_TELEPHONY_CALLING,
+                        PackageManager.FEATURE_TELEPHONY_MESSAGING),
+                "getEmergencyNumberList");
 
         final long identity = Binder.clearCallingIdentity();
         try {
