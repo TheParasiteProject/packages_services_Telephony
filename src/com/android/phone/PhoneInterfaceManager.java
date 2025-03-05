@@ -10577,8 +10577,12 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
     public int getEmergencyNumberDbVersion(int subId) {
         enforceReadPrivilegedPermission("getEmergencyNumberDbVersion");
 
-        enforceTelephonyFeatureWithException(getCurrentPackageName(),
-                PackageManager.FEATURE_TELEPHONY_CALLING, "getEmergencyNumberDbVersion");
+        enforceTelephonyFeatureWithException(
+                getCurrentPackageName(),
+                Arrays.asList(
+                        PackageManager.FEATURE_TELEPHONY_CALLING,
+                        PackageManager.FEATURE_TELEPHONY_MESSAGING),
+                "getEmergencyNumberDbVersion");
 
         final long identity = Binder.clearCallingIdentity();
         try {
@@ -10597,8 +10601,12 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
     public void notifyOtaEmergencyNumberDbInstalled() {
         enforceModifyPermission();
 
-        enforceTelephonyFeatureWithException(getCurrentPackageName(),
-                PackageManager.FEATURE_TELEPHONY_CALLING, "notifyOtaEmergencyNumberDbInstalled");
+        enforceTelephonyFeatureWithException(
+                getCurrentPackageName(),
+                Arrays.asList(
+                        PackageManager.FEATURE_TELEPHONY_CALLING,
+                        PackageManager.FEATURE_TELEPHONY_MESSAGING),
+                "notifyOtaEmergencyNumberDbInstalled");
 
         final long identity = Binder.clearCallingIdentity();
         try {
@@ -10617,8 +10625,12 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
     public void updateOtaEmergencyNumberDbFilePath(ParcelFileDescriptor otaParcelFileDescriptor) {
         enforceActiveEmergencySessionPermission();
 
-        enforceTelephonyFeatureWithException(getCurrentPackageName(),
-                PackageManager.FEATURE_TELEPHONY_CALLING, "updateOtaEmergencyNumberDbFilePath");
+        enforceTelephonyFeatureWithException(
+                getCurrentPackageName(),
+                Arrays.asList(
+                        PackageManager.FEATURE_TELEPHONY_CALLING,
+                        PackageManager.FEATURE_TELEPHONY_MESSAGING),
+                "updateOtaEmergencyNumberDbFilePath");
 
         final long identity = Binder.clearCallingIdentity();
         try {
@@ -10637,8 +10649,12 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
     public void resetOtaEmergencyNumberDbFilePath() {
         enforceActiveEmergencySessionPermission();
 
-        enforceTelephonyFeatureWithException(getCurrentPackageName(),
-                PackageManager.FEATURE_TELEPHONY_CALLING, "resetOtaEmergencyNumberDbFilePath");
+        enforceTelephonyFeatureWithException(
+                getCurrentPackageName(),
+                Arrays.asList(
+                        PackageManager.FEATURE_TELEPHONY_CALLING,
+                        PackageManager.FEATURE_TELEPHONY_MESSAGING),
+                "resetOtaEmergencyNumberDbFilePath");
 
         final long identity = Binder.clearCallingIdentity();
         try {
