@@ -13,6 +13,7 @@ android_app {
     ],
     static_libs: [
         "SatelliteClient",
+        "google-satellite",
     ],
     owner: "google",
     privileged: true,

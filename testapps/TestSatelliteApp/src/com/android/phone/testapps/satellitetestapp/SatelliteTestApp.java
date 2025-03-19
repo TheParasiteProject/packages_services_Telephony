@@ -139,6 +139,13 @@ public class SatelliteTestApp extends Activity {
           }
         });
       });
+        findViewById(R.id.PssActivity).setOnClickListener(new OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent intent = new Intent(SatelliteTestApp.this, PssActivity.class);
+                startActivity(intent);
+            }
+        });
     }
 
     @Override
