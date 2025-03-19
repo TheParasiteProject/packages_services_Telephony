@@ -38,7 +38,6 @@
         <activity android:name=".SendReceive" />
         <activity android:name=".NbIotSatellite" />
         <activity android:name=".TestSatelliteWrapper" />
-        <activity android:name=".PssActivity" />
 
         <receiver
             android:name=".SatelliteTestAppReceiver"
