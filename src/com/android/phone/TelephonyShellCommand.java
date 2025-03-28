@@ -227,6 +227,7 @@ public class TelephonyShellCommand extends BasicShellCommandHandler {
             "set-satellite-access-restriction-checking-result";
     private static final String SET_SATELLITE_ACCESS_ALLOWED_FOR_SUBSCRIPTIONS =
             "set-satellite-access-allowed-for-subscriptions";
+    private static final String SET_CTS_MODE = "set-cts-mode";
 
     private static final String DOMAIN_SELECTION_SUBCOMMAND = "domainselection";
     private static final String DOMAIN_SELECTION_SET_SERVICE_OVERRIDE = "set-dss-override";
@@ -465,6 +466,8 @@ public class TelephonyShellCommand extends BasicShellCommandHandler {
                 return handleSetSatelliteTnScanningSupport();
             case COMMAND_DELETE_IMSI_KEY:
                 return handleDeleteTestImsiKey();
+            case SET_CTS_MODE:
+                return handleSetCtsMode();
             case SEND_RIL_EVENT:
                 return handleRilEvent();
             default: {
@@ -3594,6 +3597,36 @@ public class TelephonyShellCommand extends BasicShellCommandHandler {
             return -1;
         }
         return 0;
+    }
+
+    private int handleSetCtsMode() {
+        PrintWriter errPw = getErrPrintWriter();
+        boolean ctsMode = false;
+
+        String opt;
+        while ((opt = getNextOption()) != null) {
+            switch (opt) {
+                case "-e": {
+                    ctsMode = true;
+                    break;
+                }
+            }
+        }
+        Log.d(LOG_TAG, "handleSetCtsMode: ctsMode=" + ctsMode);
+
+        boolean result = false;
+        try {
+            result = mInterface.setCtsMode(ctsMode);
+            if (VDBG) {
+                Log.v(LOG_TAG, "handleSetCtsMode: result = " + result);
+            }
+            getOutPrintWriter().println(result);
+        } catch (RemoteException e) {
+            Log.w(LOG_TAG, "handleSetCtsMode: error = " + e.getMessage());
+            errPw.println("Exception: " + e.getMessage());
+            return -1;
+        }
+        return result ? 0 : -1;
     }
 
     private int handleSetDatagramControllerTimeoutDuration() {
