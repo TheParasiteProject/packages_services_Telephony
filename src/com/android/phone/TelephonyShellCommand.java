@@ -53,6 +53,7 @@ import android.util.Log;
 import android.util.SparseArray;
 
 import com.android.ims.rcs.uce.util.FeatureTags;
+import com.android.internal.telephony.IIntegerConsumer;
 import com.android.internal.telephony.ITelephony;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
@@ -217,10 +218,16 @@ public class TelephonyShellCommand extends BasicShellCommandHandler {
     private static final String SET_SATELLITE_SUBSCRIBERID_LIST_CHANGED_INTENT_COMPONENT =
             "set-satellite-subscriberid-list-changed-intent-component";
 
+    private static final String  ADD_ATTACH_RESTRICTION_FOR_CARRIER =
+            "add-attach-restriction-for-carrier";
+    private static final String  REMOVE_ATTACH_RESTRICTION_FOR_CARRIER =
+            "remove-attach-restriction-for-carrier";
+
     private static final String SET_SATELLITE_ACCESS_RESTRICTION_CHECKING_RESULT =
             "set-satellite-access-restriction-checking-result";
     private static final String SET_SATELLITE_ACCESS_ALLOWED_FOR_SUBSCRIPTIONS =
             "set-satellite-access-allowed-for-subscriptions";
+    private static final String SET_CTS_MODE = "set-cts-mode";
 
     private static final String DOMAIN_SELECTION_SUBCOMMAND = "domainselection";
     private static final String DOMAIN_SELECTION_SET_SERVICE_OVERRIDE = "set-dss-override";
@@ -240,6 +247,10 @@ public class TelephonyShellCommand extends BasicShellCommandHandler {
     private static final String GET_IMEI = "get-imei";
     private static final String GET_SIM_SLOTS_MAPPING = "get-sim-slots-mapping";
     private static final String COMMAND_DELETE_IMSI_KEY = "delete_imsi_key";
+
+    private static final String SEND_RIL_EVENT = "send-ril-event";
+    private static final String RIL_UNSOL_STK_PROACTIVE_CMD = "stk-proactive-cmd";
+
     // Take advantage of existing methods that already contain permissions checks when possible.
     private final ITelephony mInterface;
 
@@ -247,6 +258,7 @@ public class TelephonyShellCommand extends BasicShellCommandHandler {
     private CarrierConfigManager mCarrierConfigManager;
     private TelephonyRegistryManager mTelephonyRegistryManager;
     private Context mContext;
+    private FakeRil mFakeRil;
 
     private enum CcType {
         BOOLEAN, DOUBLE, DOUBLE_ARRAY, INT, INT_ARRAY, LONG, LONG_ARRAY, STRING,
@@ -341,6 +353,7 @@ public class TelephonyShellCommand extends BasicShellCommandHandler {
         mTelephonyRegistryManager = (TelephonyRegistryManager)
                 context.getSystemService(Context.TELEPHONY_REGISTRY_SERVICE);
         mContext = context;
+        mFakeRil = new FakeRil(context);
     }
 
     @Override
@@ -443,12 +456,20 @@ public class TelephonyShellCommand extends BasicShellCommandHandler {
                 return handleSetSatelliteSubscriberIdListChangedIntentComponent();
             case SET_SATELLITE_ACCESS_RESTRICTION_CHECKING_RESULT:
                 return handleOverrideCarrierRoamingNtnEligibilityChanged();
+            case ADD_ATTACH_RESTRICTION_FOR_CARRIER:
+                return handleAddAttachRestrictionForCarrier(cmd);
+            case REMOVE_ATTACH_RESTRICTION_FOR_CARRIER:
+                return handleRemoveAttachRestrictionForCarrier(cmd);
             case SET_SATELLITE_ACCESS_ALLOWED_FOR_SUBSCRIPTIONS:
                 return handleSetSatelliteAccessAllowedForSubscriptions();
             case SET_SATELLITE_TN_SCANNING_SUPPORT:
                 return handleSetSatelliteTnScanningSupport();
             case COMMAND_DELETE_IMSI_KEY:
                 return handleDeleteTestImsiKey();
+            case SET_CTS_MODE:
+                return handleSetCtsMode();
+            case SEND_RIL_EVENT:
+                return handleRilEvent();
             default: {
                 return handleDefaultCommands(cmd);
             }
@@ -504,6 +525,7 @@ public class TelephonyShellCommand extends BasicShellCommandHandler {
         onHelpImei();
         onHelpSatellite();
         onHelpDomainSelection();
+        onHelpRilEvent();
     }
 
     private void onHelpD2D() {
@@ -874,6 +896,26 @@ public class TelephonyShellCommand extends BasicShellCommandHandler {
         pw.println("    Sets the OEM-enabled satellite provision status. Options are:");
         pw.println("      -p: the overriding satellite provision status. If no option is ");
         pw.println("          specified, reset the overridden provision status.");
+        pw.println("  add-attach-restriction-for-carrier [-s SLOT_ID ");
+        pw.println("    -r SATELLITE_COMMUNICATION_RESTRICTION_REASON] Add a restriction reason ");
+        pw.println("     for disallowing carrier supported satellite plmn scan ");
+        pw.println("     and attach by modem. ");
+        pw.println("    Options are:");
+        pw.println("      -s: The SIM slot ID to add a restriction reason. If no option ");
+        pw.println("          is specified, it will choose the default voice SIM slot.");
+        pw.println("      -r: restriction reason ");
+        pw.println("          If no option is specified, it will use ");
+        pw.println("          the default value SATELLITE_COMMUNICATION_RESTRICTION_REASON_USER.");
+        pw.println("  remove-attach-restriction-for-carrier [-s SLOT_ID ");
+        pw.println("    -r SATELLITE_COMMUNICATION_RESTRICTION_REASON] Add a restriction reason ");
+        pw.println("     for disallowing carrier supported satellite plmn scan ");
+        pw.println("     and attach by modem. ");
+        pw.println("    Options are:");
+        pw.println("      -s: The SIM slot ID to add a restriction reason. If no option ");
+        pw.println("          is specified, it will choose the default voice SIM slot.");
+        pw.println("      -r: restriction reason ");
+        pw.println("          If no option is specified, it will use ");
+        pw.println("          the default value SATELLITE_COMMUNICATION_RESTRICTION_REASON_USER.");
     }
 
     private void onHelpImei() {
@@ -892,6 +934,15 @@ public class TelephonyShellCommand extends BasicShellCommandHandler {
         pw.println("    Sets the service defined in COMPONENT_NAME to be bound");
         pw.println("  domainselection clear-dss-override");
         pw.println("    Clears DomainSelectionService override.");
+    }
+
+    private void onHelpRilEvent() {
+        PrintWriter pw = getOutPrintWriter();
+        pw.println("RIL Commands:");
+        pw.println("  send-ril-event stk-proactive-cmd [-s SLOT-ID] [-t TLV]");
+        pw.println("    Sends the RIL_UNSOL_STK_PROACTIVE_COMMAND to CatService. Options are:");
+        pw.println("  -s: the slot ID corresponding to CatService instance");
+        pw.println("  -t: TLV to send in the event");
     }
 
     private int handleImsCommand() {
@@ -3548,6 +3599,36 @@ public class TelephonyShellCommand extends BasicShellCommandHandler {
         return 0;
     }
 
+    private int handleSetCtsMode() {
+        PrintWriter errPw = getErrPrintWriter();
+        boolean ctsMode = false;
+
+        String opt;
+        while ((opt = getNextOption()) != null) {
+            switch (opt) {
+                case "-e": {
+                    ctsMode = true;
+                    break;
+                }
+            }
+        }
+        Log.d(LOG_TAG, "handleSetCtsMode: ctsMode=" + ctsMode);
+
+        boolean result = false;
+        try {
+            result = mInterface.setCtsMode(ctsMode);
+            if (VDBG) {
+                Log.v(LOG_TAG, "handleSetCtsMode: result = " + result);
+            }
+            getOutPrintWriter().println(result);
+        } catch (RemoteException e) {
+            Log.w(LOG_TAG, "handleSetCtsMode: error = " + e.getMessage());
+            errPw.println("Exception: " + e.getMessage());
+            return -1;
+        }
+        return result ? 0 : -1;
+    }
+
     private int handleSetDatagramControllerTimeoutDuration() {
         PrintWriter errPw = getErrPrintWriter();
         boolean reset = false;
@@ -4018,6 +4099,118 @@ public class TelephonyShellCommand extends BasicShellCommandHandler {
         return 0;
     }
 
+    private int handleAddAttachRestrictionForCarrier(String command) {
+        PrintWriter errPw = getErrPrintWriter();
+        String tag = command + ": ";
+        int subId = SubscriptionManager.getDefaultSubscriptionId();
+        int reason = 0;
+
+        String opt;
+        while ((opt = getNextOption()) != null) {
+            switch (opt) {
+                case "-s": {
+                    try {
+                        subId = slotStringToSubId(tag, getNextArgRequired());
+                    } catch (NumberFormatException e) {
+                        errPw.println("handleAddAttachRestrictionForCarrier:"
+                                + " require an integer for subId");
+                        return -1;
+                    }
+                    break;
+                }
+                case "-r": {
+                    try {
+                        reason = Integer.parseInt(getNextArgRequired());
+                    } catch (NumberFormatException e) {
+                        errPw.println("handleAddAttachRestrictionForCarrier:"
+                                + " require an integer for reason");
+                        return -1;
+                    }
+                    break;
+                }
+            }
+        }
+
+        Log.d(LOG_TAG, "handleAddAttachRestrictionForCarrier: subId= "
+                + subId + ", reason= " + reason);
+
+        try {
+            IIntegerConsumer errorCallback = new IIntegerConsumer.Stub() {
+                @Override
+                public void accept(int result) {
+                    if (VDBG) {
+                        Log.v(LOG_TAG, "addAttachRestrictionForCarrier result = " + result);
+                    }
+                    getOutPrintWriter().println(result);
+                }
+            };
+
+            mInterface.addAttachRestrictionForCarrier(subId, reason, errorCallback);
+        } catch (RemoteException e) {
+            Log.e(LOG_TAG, "addAttachRestrictionForCarrier:"
+                    + " error = " + e.getMessage());
+            errPw.println("Exception: " + e.getMessage());
+            return -1;
+        }
+        return 0;
+    }
+
+    private int handleRemoveAttachRestrictionForCarrier(String command) {
+        PrintWriter errPw = getErrPrintWriter();
+        String tag = command + ": ";
+        int subId = SubscriptionManager.getDefaultSubscriptionId();
+        int reason = 0;
+
+        String opt;
+        while ((opt = getNextOption()) != null) {
+            switch (opt) {
+                case "-s": {
+                    try {
+                        subId = slotStringToSubId(tag, getNextArgRequired());
+                    } catch (NumberFormatException e) {
+                        errPw.println("handleRemoveAttachRestrictionForCarrier:"
+                                + " require an integer for subId");
+                        return -1;
+                    }
+                    break;
+                }
+                case "-r": {
+                    try {
+                        reason = Integer.parseInt(getNextArgRequired());
+                    } catch (NumberFormatException e) {
+                        errPw.println("handleRemoveAttachRestrictionForCarrier:"
+                                + " require an integer for reason");
+                        return -1;
+                    }
+                    break;
+                }
+            }
+        }
+
+        Log.d(LOG_TAG, "handleRemoveAttachRestrictionForCarrier: subId= "
+                + subId + ", reason= " + reason);
+
+        try {
+            IIntegerConsumer errorCallback = new IIntegerConsumer.Stub() {
+                @Override
+                public void accept(int result) {
+                    if (VDBG) {
+                        Log.v(LOG_TAG, "removeAttachRestrictionForCarrier result = " + result);
+                    }
+                    getOutPrintWriter().println(result);
+                }
+            };
+
+            mInterface.removeAttachRestrictionForCarrier(subId, reason, errorCallback);
+        } catch (RemoteException e) {
+            Log.e(LOG_TAG, "removeAttachRestrictionForCarrier:"
+                    + " error = " + e.getMessage());
+            errPw.println("Exception: " + e.getMessage());
+            return -1;
+        }
+        return 0;
+    }
+
     /**
      * Sample inputStr = "US,UK,CA;2,1,3"
      * Sample output: {[US,2], [UK,1], [CA,3]}
@@ -4331,5 +4524,47 @@ public class TelephonyShellCommand extends BasicShellCommandHandler {
         }
         phone.resetCarrierKeysForImsiEncryption(true);
         return 1;
+    }
+
+    private int handleRilEvent() {
+        String event = getNextArg();
+        if (event == null) {
+            onHelpRilEvent();
+            return -1;
+        }
+        switch (event) {
+            case RIL_UNSOL_STK_PROACTIVE_CMD:
+                return handleStkProactiveCommand();
+        }
+        return -1;
+    }
+
+    private int handleStkProactiveCommand() {
+        String tlv = null;
+        int slotId = getDefaultSlot();
+        PrintWriter errPw = getErrPrintWriter();
+        String opt;
+        while ((opt = getNextOption()) != null) {
+            switch (opt) {
+                case "-t":
+                    tlv = getNextArgRequired();
+                    break;
+                case "-s":
+                    try {
+                        slotId = Integer.parseInt(getNextArgRequired());
+                    } catch (NumberFormatException e) {
+                        errPw.println(
+                                "send-ril-event stk-proactive-cmd requires an integer as a"
+                                + " SLOT_ID.");
+                        return -1;
+                    }
+                    break;
+            }
+        }
+        if (tlv == null) {
+            errPw.println("send-ril-event stk-proactive-cmd requires a TLV");
+        }
+        mFakeRil.sendProactiveCmdToCatService(slotId, tlv);
+        return 0;
     }
 }
