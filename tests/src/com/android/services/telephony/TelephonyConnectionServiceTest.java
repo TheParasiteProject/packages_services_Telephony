@@ -127,7 +127,6 @@ import org.mockito.Mockito;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -1900,38 +1899,6 @@ public class TelephonyConnectionServiceTest extends TelephonyTestBase {
     }
 
     /**
-     * Verifies where there is another call on a different sub, we set
-     * {@link android.telecom.Connection#EXTRA_ANSWERING_DROPS_FG_CALL} on the incoming call extras.
-     * @throws Exception
-     */
-    @Test
-    @SmallTest
-    public void testSecondCallDifferentSubWillDisconnect() throws Exception {
-        // Previous test gets us into a good enough state
-        testIncomingDoesntRequestDisconnect();
-
-        when(mCall.getState()).thenReturn(Call.State.ACTIVE);
-        when(mCall2.getState()).thenReturn(Call.State.WAITING);
-        when(mCall2.getLatestConnection()).thenReturn(mInternalConnection2);
-        // At this point the call is ringing on the second phone.
-        when(mPhone0.getRingingCall()).thenReturn(null);
-        when(mPhone1.getRingingCall()).thenReturn(mCall2);
-
-        mBinderStub.createConnection(PHONE_ACCOUNT_HANDLE_2, "TC@2",
-                new ConnectionRequest(PHONE_ACCOUNT_HANDLE_2, Uri.parse("tel:16505551213"),
-                        new Bundle()),
-                true, false, null);
-        waitForHandlerAction(mTestConnectionService.getHandler(), TIMEOUT_MS);
-        assertEquals(2, mTestConnectionService.getAllConnections().size());
-
-        // The incoming connection should have the extra set.
-        assertEquals(1, mTestConnectionService.getAllConnections().stream()
-                .filter(c -> c.getExtras() != null && c.getExtras().containsKey(
-                        android.telecom.Connection.EXTRA_ANSWERING_DROPS_FG_CALL))
-                .count());
-    }
-
-    /**
      * For virtual DSDA-enabled devices, verifies where there is another call on the same sub, we
      * don't set {@link android.telecom.Connection#EXTRA_ANSWERING_DROPS_FG_CALL} on the incoming
      * call extras.
@@ -2066,126 +2033,6 @@ public class TelephonyConnectionServiceTest extends TelephonyTestBase {
         TelephonyConnectionService.maybeDisconnectCallsOnOtherSubs(
                 tcs, SUB2_HANDLE, true, mTelephonyManagerProxy);
         assertTrue(tc1.wasDisconnected);
-    }
-
-    /**
-     * For calls on the same sub, the Dialer implements the 'swap' functionality to perform hold and
-     * unhold, so we do not additionally unhold when 'hold' button is pressed.
-     */
-    @Test
-    @SmallTest
-    public void testDontUnholdOnSameSubForVirtualDsdaDevice() {
-        when(mTelephonyManagerProxy.isConcurrentCallsPossible()).thenReturn(true);
-
-        ArrayList<android.telecom.Connection> tcs = new ArrayList<>();
-        Collection<Conference> conferences = new ArrayList<>();
-        SimpleTelephonyConnection tc1 = createTestConnection(SUB1_HANDLE, 0, false);
-        tcs.add(tc1);
-        TelephonyConnectionService.maybeUnholdCallsOnOtherSubs(
-                tcs, conferences, SUB1_HANDLE, mTelephonyManagerProxy);
-        assertFalse(tc1.wasUnheld);
-    }
-
-    /**
-     * Triggering 'Hold' on 1 call will unhold the other call for DSDA or Virtual DSDA
-     * enabled devices, effectively constituting 'swap' functionality.
-     */
-    @Test
-    @SmallTest
-    public void testUnholdOnOtherSubForVirtualDsdaDevice() {
-        when(mTelephonyManagerProxy.isConcurrentCallsPossible()).thenReturn(true);
-
-        ArrayList<android.telecom.Connection> tcs = new ArrayList<>();
-        SimpleTelephonyConnection tc1 = createTestConnection(SUB1_HANDLE, 0, false);
-        tcs.add(tc1);
-        TelephonyConnectionService.maybeUnholdCallsOnOtherSubs(
-                tcs, new ArrayList<>(), SUB2_HANDLE, mTelephonyManagerProxy);
-        assertTrue(tc1.wasUnheld);
-    }
-
-    /**
-     * Verifies hold/unhold behavior for a conference on the other sub. It does not disturb the
-     * individual connections that participate in the conference.
-     */
-    @Test
-    @SmallTest
-    public void testUnholdConferenceOnOtherSubForVirtualDsdaDevice() {
-        when(mTelephonyManagerProxy.isConcurrentCallsPossible()).thenReturn(true);
-        SimpleTelephonyConnection tc1 =
-                createTestConnection(SUB1_HANDLE, 0, false);
-        SimpleTelephonyConnection tc2 =
-                createTestConnection(SUB1_HANDLE, 0, false);
-        List<android.telecom.Connection> conferenceParticipants = Arrays.asList(tc1, tc2);
-
-        SimpleConference testConference = createTestConference(SUB1_HANDLE, 0);
-        List<Conference> conferences = Arrays.asList(testConference);
-
-        TelephonyConnectionService.maybeUnholdCallsOnOtherSubs(
-                conferenceParticipants, conferences, SUB2_HANDLE, mTelephonyManagerProxy);
-
-        assertTrue(testConference.wasUnheld);
-        assertFalse(tc1.wasUnheld);
-        assertFalse(tc2.wasUnheld);
-    }
-
-    /**
-     * For DSDA devices, placing an outgoing call on a 2nd sub will hold the existing ACTIVE
-     * connection on the first sub.
-     */
-    @Test
-    @SmallTest
-    public void testHoldOnOtherSubForVirtualDsdaDevice() {
-        when(mTelephonyManagerProxy.isConcurrentCallsPossible()).thenReturn(true);
-
-        ArrayList<android.telecom.Connection> tcs = new ArrayList<>();
-        SimpleTelephonyConnection tc1 = createTestConnection(SUB1_HANDLE, 0, false);
-        tc1.setTelephonyConnectionActive();
-        tcs.add(tc1);
-
-        Conferenceable c = TelephonyConnectionService.maybeHoldCallsOnOtherSubs(
-                tcs, new ArrayList<>(), SUB2_HANDLE, mTelephonyManagerProxy);
-        assertTrue(c.equals(tc1));
-        assertTrue(tc1.wasHeld);
-    }
-
-    /**
-     * For DSDA devices with AP domain selection service enabled, placing an outgoing call
-     * on a 2nd sub will hold the existing ACTIVE connection on the first sub.
-     */
-    @Test
-    @SmallTest
-    public void testHoldOnOtherSubForVirtualDsdaDeviceWithDomainSelectionEnabled() {
-        when(mTelephonyManagerProxy.isConcurrentCallsPossible()).thenReturn(true);
-        doReturn(true).when(mDomainSelectionResolver).isDomainSelectionSupported();
-
-        ArrayList<android.telecom.Connection> tcs = new ArrayList<>();
-        SimpleTelephonyConnection tc1 = createTestConnection(SUB1_HANDLE, 0, false);
-        tc1.setTelephonyConnectionActive();
-        tcs.add(tc1);
-
-        Conferenceable c = TelephonyConnectionService.maybeHoldCallsOnOtherSubs(
-                tcs, new ArrayList<>(), SUB2_HANDLE, mTelephonyManagerProxy);
-        assertTrue(c.equals(tc1));
-        assertTrue(tc1.wasHeld);
-    }
-
-    /**
-     * For DSDA devices, if the existing connection was already held, placing an outgoing call on a
-     * 2nd sub will not attempt to hold the existing connection on the first sub.
-     */
-    @Test
-    @SmallTest
-    public void testNoHold_ifExistingConnectionAlreadyHeld_ForVirtualDsdaDevice() {
-        when(mTelephonyManagerProxy.isConcurrentCallsPossible()).thenReturn(true);
-
-        ArrayList<android.telecom.Connection> tcs = new ArrayList<>();
-        SimpleTelephonyConnection tc1 = createTestConnection(SUB1_HANDLE, 0, false);
-        tc1.setTelephonyConnectionOnHold();
-        tcs.add(tc1);
-
-        Conferenceable c = TelephonyConnectionService.maybeHoldCallsOnOtherSubs(
-                tcs, new ArrayList<>(), SUB2_HANDLE, mTelephonyManagerProxy);
-        assertNull(c);
     }
 
     // For 'Virtual DSDA' devices, if there is an existing call on sub1, an outgoing call on sub2
@@ -3858,6 +3705,66 @@ public class TelephonyConnectionServiceTest extends TelephonyTestBase {
         listener.onDisconnect(0);
 
         // Continue to proceed the outgoing emergency call after active call is disconnected.
+        ArgumentCaptor<android.telecom.Connection> connectionCaptor =
+                ArgumentCaptor.forClass(android.telecom.Connection.class);
+        verify(mDomainSelectionResolver)
+                .getDomainSelectionConnection(eq(mPhone0), eq(SELECTOR_TYPE_CALLING), eq(true));
+        verify(mEmergencyStateTracker)
+                .startEmergencyCall(eq(mPhone0), connectionCaptor.capture(), eq(false));
+        verify(mSatelliteSOSMessageRecommender, times(2))
+                .onEmergencyCallStarted(any(), anyBoolean());
+        verify(mEmergencyCallDomainSelectionConnection).createEmergencyConnection(any(), any());
+        verify(mPhone0).dial(anyString(), any(), any());
+
+        android.telecom.Connection tc = connectionCaptor.getValue();
+        assertNotNull(tc);
+        assertEquals(telecomCallId2, tc.getTelecomCallId());
+        assertEquals(mTestConnectionService.getEmergencyConnection(), tc);
+    }
+
+    @Test
+    public void testDomainSelectionAddVoWifiEmergencyCallWhenImsCallActive() throws Exception {
+        mSetFlagsRule.enableFlags(Flags.FLAG_HANGUP_ACTIVE_CALL_BASED_ON_EMERGENCY_CALL_DOMAIN);
+
+        setupForCallTest();
+        doReturn(1).when(mPhone0).getSubId();
+        doReturn(1).when(mImsPhone).getSubId();
+        ImsPhoneCall imsPhoneCall = Mockito.mock(ImsPhoneCall.class);
+        ImsPhoneConnection imsPhoneConnection = Mockito.mock(ImsPhoneConnection.class);
+        when(imsPhoneCall.getPhone()).thenReturn(mImsPhone);
+        when(imsPhoneConnection.getCall()).thenReturn(imsPhoneCall);
+        when(imsPhoneConnection.getPhoneType()).thenReturn(PhoneConstants.PHONE_TYPE_IMS);
+
+        // PROPERTY_IS_EXTERNAL_CALL: to avoid extra processing that is not related to this test.
+        SimpleTelephonyConnection tc1 = createTestConnection(PHONE_ACCOUNT_HANDLE_1,
+                android.telecom.Connection.PROPERTY_IS_EXTERNAL_CALL, false);
+        // IMS connection is set.
+        tc1.setOriginalConnection(imsPhoneConnection);
+        mTestConnectionService.addExistingConnection(PHONE_ACCOUNT_HANDLE_1, tc1);
+
+        assertEquals(1, mTestConnectionService.getAllConnections().size());
+        TelephonyConnection connection1 = (TelephonyConnection)
+                mTestConnectionService.getAllConnections().toArray()[0];
+        assertEquals(tc1, connection1);
+
+        // Add VoWifi emergency call.
+        String telecomCallId2 = "TC2";
+        int selectedDomain = PhoneConstants.DOMAIN_NON_3GPP_PS;
+        setupForDialForDomainSelection(mPhone0, selectedDomain, true);
+        getTestContext().getCarrierConfig(0 /*subId*/).putBoolean(
+                CarrierConfigManager.KEY_ALLOW_HOLD_CALL_DURING_EMERGENCY_BOOL, true);
+
+        mTestConnectionService.onCreateOutgoingConnection(PHONE_ACCOUNT_HANDLE_1,
+                createConnectionRequest(PHONE_ACCOUNT_HANDLE_1,
+                        TEST_EMERGENCY_NUMBER, telecomCallId2));
+
+        // Maintain the active IMS call because VoWifi emergency call is made.
+        ArgumentCaptor<Connection.Listener> listenerCaptor =
+                ArgumentCaptor.forClass(Connection.Listener.class);
+        verify(imsPhoneConnection, never()).addListener(listenerCaptor.capture());
+        assertFalse(tc1.wasDisconnected);
+
+        // Continue to proceed the outgoing emergency call without active call disconnection.
         ArgumentCaptor<android.telecom.Connection> connectionCaptor =
                 ArgumentCaptor.forClass(android.telecom.Connection.class);
         verify(mDomainSelectionResolver)
