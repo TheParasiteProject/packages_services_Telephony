@@ -892,6 +892,9 @@ public class SatelliteAccessController extends Handler {
                 cleanUpTelephonyConfigs();
                 cleanUpSatelliteAccessConfigOtaResources();
                 cleanupSatelliteConfigOtaResources();
+                plogd("reload overly config and configupdater config");
+                loadOverlayConfigs(mContext);
+                loadConfigUpdaterConfigs();
             } else {
                 mIsOverlayConfigOverridden = true;
                 mOverriddenIsSatelliteAllowAccessControl = isAllowed;
