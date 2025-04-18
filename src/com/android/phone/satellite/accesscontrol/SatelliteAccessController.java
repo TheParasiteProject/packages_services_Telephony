@@ -635,11 +635,12 @@ public class SatelliteAccessController extends Handler {
         }
     }
 
-    private void updateCurrentSatelliteAllowedState(boolean isAllowed) {
+    private void updateCurrentSatelliteAllowedState(
+            boolean isAllowed, boolean isLocationSettingsDisabled) {
         plogd("updateCurrentSatelliteAllowedState");
         if (isAllowed != mCurrentSatelliteAllowedState.get()) {
-            plogd("updatedValue = " + isAllowed + " | mCurrentSatelliteAllowedState = "
-                    + mCurrentSatelliteAllowedState.get());
+            plogd("updateCurrentSatelliteAllowedState: updatedValue = " + isAllowed
+                    + " | mCurrentSatelliteAllowedState = " + mCurrentSatelliteAllowedState.get());
             mCurrentSatelliteAllowedState.set(isAllowed);
             notifySatelliteCommunicationAllowedStateChanged(isAllowed);
             mControllerMetricsStats.reportAllowedStateChanged();
@@ -647,6 +648,11 @@ public class SatelliteAccessController extends Handler {
                 synchronized (mLock) {
                     plogd("updateCurrentSatelliteAllowedState : set mNewRegionalConfigId null");
                     mNewRegionalConfigId = null;
+                    if (isLocationSettingsDisabled) {
+                        plogd("updateCurrentSatelliteAllowedState: "
+                                + "clear allowed state cache when location is just disabled");
+                        mLatestSatelliteCommunicationAllowedSetTime.set(0L);
+                    }
                 }
             }
         }
@@ -1811,12 +1817,12 @@ public class SatelliteAccessController extends Handler {
         plogd("sendSatelliteAllowResultToReceivers : resultCode is " + resultCode);
         switch(resultCode) {
             case SATELLITE_RESULT_SUCCESS:
-                updateCurrentSatelliteAllowedState(allowed);
+                updateCurrentSatelliteAllowedState(allowed, false);
                 mIsCurrentLocationEligibleForNotification.set(true);
                 break;
 
             case SATELLITE_RESULT_LOCATION_DISABLED:
-                updateCurrentSatelliteAllowedState(allowed);
+                updateCurrentSatelliteAllowedState(allowed, true);
                 break;
             default:
                 break;
