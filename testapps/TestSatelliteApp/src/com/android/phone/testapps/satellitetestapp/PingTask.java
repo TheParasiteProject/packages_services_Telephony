@@ -17,7 +17,6 @@
 package com.android.phone.testapps.satellitetestapp;
 
 import android.net.Network;
-import android.os.AsyncTask;
 import android.util.Log;
 
 import java.io.IOException;
@@ -25,30 +24,30 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 
-class PingTask extends AsyncTask<Network, Integer, Integer> {
-    protected Integer doInBackground(Network... network) {
-        ping(network[0]);
-        return 0;
-    }
 
-    String ping(Network network) {
+class PingTask{
+    private static final String PING_TARGET_HOST = "www.google.com";
+    private static final int PING_TIMEOUT_SECONDS = 20;
+
+    public String ping(Network network) {
         URL url = null;
         try {
             url = new URL("http://www.google.com");
         } catch (Exception e) {
-            Log.d("SatelliteDataConstrained", "exception: " + e);
+            Log.d("PingTask", "exception: " + e);
         }
         if (url != null) {
             try {
-                Log.d("SatelliteDataConstrained", "ping " + url);
+                Log.d("PingTask", "ping " + url);
                 String result = httpGet(network, url);
-                Log.d("SatelliteDataConstrained", "Ping Success");
+                Log.d("PingTask", "Ping Success");
                 return result;
             } catch (Exception e) {
-                Log.d("SatelliteDataConstrained", "exception: " + e);
+                Log.d("PingTask", "exception: " + e);
             }
         }
         return null;
+
     }
 
     /**
@@ -65,4 +64,20 @@ class PingTask extends AsyncTask<Network, Integer, Integer> {
             connection.disconnect();
         }
     }
+
+    public Integer pingIcmp() {
+        String command = "/system/bin/ping -c 1 -W " + PING_TIMEOUT_SECONDS + " "
+                + PING_TARGET_HOST;
+        try {
+            Log.d("PingTask", "ping " + command);
+            int result = Runtime.getRuntime().exec(command).waitFor();
+            Log.d("PingTask", "Ping Success");
+            return result;
+        } catch (Exception e) {
+            Log.d("PingTask", "exception: " + e);
+        }
+
+        return null;
+    }
+
 }
