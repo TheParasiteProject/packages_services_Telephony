@@ -340,10 +340,8 @@ public class SatelliteAccessController extends Handler {
      * Key: Sub Id, Value: (key: Regional satellite config Id, value: SatelliteRegionalConfig
      * contains satellite config IDs and set of earfcns in the corresponding regions).
      */
-    @GuardedBy("mRegionalSatelliteEarfcnsLock")
-    private Map<Integer, Map<Integer, SatelliteRegionalConfig>>
-            mSatelliteRegionalConfigPerSubMap = new HashMap();
-    @NonNull private final Object mRegionalSatelliteEarfcnsLock = new Object();
+    private ConcurrentHashMap<Integer, Map<Integer, SatelliteRegionalConfig>>
+            mSatelliteRegionalConfigPerSubMap = new ConcurrentHashMap();
 
     /** Key: Config ID; Value: SatelliteAccessConfiguration */
     @GuardedBy("mLock")
@@ -430,7 +428,8 @@ public class SatelliteAccessController extends Handler {
 
     private Notification mSatelliteAvailableNotification;
     // Key: SatelliteManager#SatelliteDisallowedReason; Value: Notification
-    private final Map<Integer, Notification> mSatelliteUnAvailableNotifications = new HashMap<>();
+    private final ConcurrentHashMap<Integer, Notification> mSatelliteUnAvailableNotifications =
+            new ConcurrentHashMap<>();
     private NotificationManager mNotificationManager;
     @GuardedBy("mSatelliteDisallowedReasonsLock")
     private final List<Integer> mSatelliteDisallowedReasons = new ArrayList<>();
@@ -2254,7 +2253,7 @@ public class SatelliteAccessController extends Handler {
                             mLatestSatelliteCommunicationAllowed);
                 }
             } else {
-                plogv("location query is not allowed");
+                plogd("location query is not allowed");
                 Bundle bundle = new Bundle();
                 bundle.putBoolean(KEY_SATELLITE_COMMUNICATION_ALLOWED, false);
                 sendSatelliteAllowResultToReceivers(
@@ -3405,24 +3404,22 @@ public class SatelliteAccessController extends Handler {
             return;
         }
 
-        synchronized (mRegionalSatelliteEarfcnsLock) {
-            SatelliteRegionalConfig satelliteRegionalConfig;
-            /* Key: Regional satellite config ID, Value: SatelliteRegionalConfig
-             * contains satellite config IDs and set of earfcns in the corresponding regions.
-             */
-            Map<Integer, SatelliteRegionalConfig> satelliteRegionalConfigMap = new HashMap<>();
-            for (String configId: earfcnsMap.keySet()) {
-                Set<Integer> earfcnsSet = new HashSet<>();
-                for (int earfcn : earfcnsMap.get(configId)) {
-                    earfcnsSet.add(earfcn);
-                }
-                satelliteRegionalConfig = new SatelliteRegionalConfig(Integer.valueOf(configId),
-                        earfcnsSet);
-                satelliteRegionalConfigMap.put(Integer.valueOf(configId), satelliteRegionalConfig);
+        SatelliteRegionalConfig satelliteRegionalConfig;
+        /* Key: Regional satellite config ID, Value: SatelliteRegionalConfig
+         * contains satellite config IDs and set of earfcns in the corresponding regions.
+         */
+        Map<Integer, SatelliteRegionalConfig> satelliteRegionalConfigMap = new HashMap<>();
+        for (String configId: earfcnsMap.keySet()) {
+            Set<Integer> earfcnsSet = new HashSet<>();
+            for (int earfcn : earfcnsMap.get(configId)) {
+                earfcnsSet.add(earfcn);
             }
-
-            mSatelliteRegionalConfigPerSubMap.put(subId, satelliteRegionalConfigMap);
+            satelliteRegionalConfig = new SatelliteRegionalConfig(Integer.valueOf(configId),
+                    earfcnsSet);
+            satelliteRegionalConfigMap.put(Integer.valueOf(configId), satelliteRegionalConfig);
         }
+
+        mSatelliteRegionalConfigPerSubMap.put(subId, satelliteRegionalConfigMap);
     }
 
     private void handleCarrierConfigChanged(@NonNull Context context, int slotIndex,
