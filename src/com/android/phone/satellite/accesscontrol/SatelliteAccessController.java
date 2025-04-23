@@ -464,6 +464,7 @@ public class SatelliteAccessController extends Handler {
     private AtomicBoolean mIsAllowedCheckBeforeEnablingSatellite = new AtomicBoolean(false);
     private AtomicBoolean mIsCurrentLocationEligibleForNotification = new AtomicBoolean(false);
     private AtomicBoolean mIsProvisionEligibleForNotification = new AtomicBoolean(false);
+    private AtomicBoolean mIsAllowedStateCacheDisabledForCtsTest = new AtomicBoolean(false);
 
     /**
      * Create a SatelliteAccessController instance.
@@ -1879,7 +1880,7 @@ public class SatelliteAccessController extends Handler {
 
     private void handleEventDisallowedReasonsChanged() {
         if (mNotificationManager == null) {
-            logd("showSatelliteSystemNotification: NotificationManager is null");
+            plogd("showSatelliteSystemNotification: NotificationManager is null");
             return;
         }
 
@@ -1894,7 +1895,7 @@ public class SatelliteAccessController extends Handler {
                 && mIsProvisionEligibleForNotification.get()) {
             showSatelliteSystemNotification();
         } else {
-            logd("mSatelliteDisallowedReasons:"
+            plogd("mSatelliteDisallowedReasons:"
                     + " CurrentLocationAvailable: "
                     + mIsCurrentLocationEligibleForNotification.get()
                     + " SatelliteProvision: " + mIsProvisionEligibleForNotification.get());
@@ -2236,7 +2237,7 @@ public class SatelliteAccessController extends Handler {
      */
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
     public void checkSatelliteAccessRestrictionUsingGPS() {
-        logv("checkSatelliteAccessRestrictionUsingGPS:");
+        plogd("checkSatelliteAccessRestrictionUsingGPS:");
         if (isInEmergency()) {
             executeLocationQuery();
         } else {
@@ -2267,6 +2268,10 @@ public class SatelliteAccessController extends Handler {
      * {@code false} otherwise.
      */
     private boolean isCommunicationAllowedCacheValid() {
+        if (mIsAllowedStateCacheDisabledForCtsTest.get()) {
+            logd("isCommunicationAllowedCacheValid: cache is disabled for CTS test");
+            return false;
+        }
         if (mLatestSatelliteCommunicationAllowedSetTime > 0) {
             long currentTime = getElapsedRealtimeNanos();
             if ((currentTime - mLatestSatelliteCommunicationAllowedSetTime)
@@ -3194,8 +3199,7 @@ public class SatelliteAccessController extends Handler {
     /**
      * This API can be used by only CTS to set the cache whether satellite communication is allowed.
      *
-     * @param state a state indicates whether satellite access allowed state should be cached and
-     *              the allowed state.
+     * @param state whether satellite access allowed state cache should be used or not.
      * @return {@code true} if the setting is successful, {@code false} otherwise.
      */
     public boolean setIsSatelliteCommunicationAllowedForCurrentLocationCache(String state) {
@@ -3206,25 +3210,11 @@ public class SatelliteAccessController extends Handler {
         }
 
         logd("setIsSatelliteCommunicationAllowedForCurrentLocationCache: state=" + state);
-
         synchronized (mSatelliteCommunicationAllowStateLock) {
-            if ("cache_allowed".equalsIgnoreCase(state)) {
-                mLatestSatelliteCommunicationAllowedSetTime = getElapsedRealtimeNanos();
-                mLatestSatelliteCommunicationAllowed = true;
-                updateCurrentSatelliteAllowedState(true);
-            } else if ("cache_not_allowed".equalsIgnoreCase(state)) {
-                mLatestSatelliteCommunicationAllowedSetTime = getElapsedRealtimeNanos();
-                mLatestSatelliteCommunicationAllowed = false;
-                updateCurrentSatelliteAllowedState(false);
-            } else if ("cache_clear_and_not_allowed".equalsIgnoreCase(state)) {
-                mLatestSatelliteCommunicationAllowedSetTime = 0;
-                mLatestSatelliteCommunicationAllowed = false;
-                updateCurrentSatelliteAllowedState(false);
-                persistLatestSatelliteCommunicationAllowedState();
-            } else if ("clear_cache_only".equalsIgnoreCase(state)) {
-                mLatestSatelliteCommunicationAllowedSetTime = 0;
-                mLatestSatelliteCommunicationAllowed = false;
-                persistLatestSatelliteCommunicationAllowedState();
+            if ("enable".equalsIgnoreCase(state)) {
+                mIsAllowedStateCacheDisabledForCtsTest.set(false);
+            } else if ("disable".equalsIgnoreCase(state)) {
+                mIsAllowedStateCacheDisabledForCtsTest.set(true);
             } else {
                 loge("setIsSatelliteCommunicationAllowedForCurrentLocationCache: invalid state="
                         + state);
