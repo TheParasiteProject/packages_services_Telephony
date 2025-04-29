@@ -34,6 +34,7 @@ import android.os.PersistableBundle;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.CarrierConfigManager;
 import android.telephony.CellSignalStrength;
+import android.telephony.DataSpecificRegistrationInfo;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.RadioAccessFamily;
 import android.telephony.ServiceState;
@@ -95,6 +96,9 @@ public class PhoneInformationV2FragmentDataNetwork extends Fragment {
     private ThreadPoolExecutor mQueuedWork;
     private TextView mDownlinkKbps;
     private TextView mUplinkKbps;
+    private TextView mNrAvailable;
+    private TextView mNrState;
+    private TextView mNrFrequency;
     private Spinner mPreferredNetworkType;
     private int mPreferredNetworkTypeResult;
     private Spinner mMockSignalStrength;
@@ -118,10 +122,12 @@ public class PhoneInformationV2FragmentDataNetwork extends Fragment {
     private CarrierConfigManager mCarrierConfigManager;
     private Context mContext;
     private Handler mHandler;
+    private View mView;
     private static String[] sPhoneIndexLabels = new String[0];
     private final boolean[] mSimulateOos = new boolean[2];
     private int[] mSelectedSignalStrengthIndex = new int[2];
     private int[] mSelectedMockDataNetworkTypeIndex = new int[2];
+    private static final int EVENT_UPDATE_NR_STATS = 1008;
     private static final String[] PREFERRED_NETWORK_LABELS = {
         "GSM/WCDMA preferred",
         "GSM only",
@@ -224,6 +230,7 @@ public class PhoneInformationV2FragmentDataNetwork extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
+        mView = view;
         mContext = requireContext();
         mHandler = new Handler(Looper.getMainLooper());
         mSystemUser = android.os.Process.myUserHandle().isSystem();
@@ -275,6 +282,9 @@ public class PhoneInformationV2FragmentDataNetwork extends Fragment {
         mVoiceNetwork = (TextView) view.findViewById(R.id.voice_network);
         mVoiceRawReg = (TextView) view.findViewById(R.id.voice_raw_registration_state);
         mDBm = (TextView) view.findViewById(R.id.dbm);
+        mNrAvailable = (TextView) view.findViewById(R.id.nr_available);
+        mNrState = (TextView) view.findViewById(R.id.nr_state);
+        mNrFrequency = (TextView) view.findViewById(R.id.nr_frequency);
 
         mDownlinkKbps = (TextView) view.findViewById(R.id.dl_kbps);
         mUplinkKbps = (TextView) view.findViewById(R.id.ul_kbps);
@@ -306,6 +316,7 @@ public class PhoneInformationV2FragmentDataNetwork extends Fragment {
         mMockDataNetworkType = (Spinner) view.findViewById(R.id.dataNetworkType);
         if (!Build.isDebuggable() || !mSystemUser) {
             mMockDataNetworkType.setVisibility(View.GONE);
+
             view.findViewById(R.id.dataNetworkType).setVisibility(View.GONE);
             view.findViewById(R.id.data_network_type_label).setVisibility(View.GONE);
         } else {
@@ -338,6 +349,13 @@ public class PhoneInformationV2FragmentDataNetwork extends Fragment {
             mImsWfcProvisionedSwitch.setVisibility(View.GONE);
             mEabProvisionedSwitch.setVisibility(View.GONE);
         }
+
+        // hide 5G stats on devices that don't support 5G
+        if ((mTelephonyManager.getSupportedRadioAccessFamily()
+                & TelephonyManager.NETWORK_TYPE_BITMASK_NR) == 0) {
+            setNrStatsVisibility(View.GONE);
+        }
+
 
         mPhoneButton0 = view.findViewById(R.id.phone_button_0);
         mPhoneTitle0 = view.findViewById(R.id.phone_button_0_title);
@@ -752,6 +770,7 @@ public class PhoneInformationV2FragmentDataNetwork extends Fragment {
         updateRadioPowerState();
         updateImsProvisionedState();
         updateNetworkType();
+        updateNrStats();
 
         // set selection before registering to prevent update
         mPreferredNetworkType.setSelection(mPreferredNetworkTypeResult, true);
@@ -929,6 +948,40 @@ public class PhoneInformationV2FragmentDataNetwork extends Fragment {
         mUplinkKbps.setText(String.format("%-5d", ulbw));
     }
 
+    private void setNrStatsVisibility(int visibility) {
+        ((TextView) mView.findViewById(R.id.nr_available_label)).setVisibility(visibility);
+        mNrAvailable.setVisibility(visibility);
+        ((TextView) mView.findViewById(R.id.nr_state_label)).setVisibility(visibility);
+        mNrState.setVisibility(visibility);
+        ((TextView) mView.findViewById(R.id.nr_frequency_label)).setVisibility(visibility);
+        mNrFrequency.setVisibility(visibility);
+    }
+
+    private void updateNrStats() {
+        if ((mTelephonyManager.getSupportedRadioAccessFamily()
+                & TelephonyManager.NETWORK_TYPE_BITMASK_NR) == 0) {
+            return;
+        }
+        ServiceState ss = mTelephonyManager.getServiceStateForSlot(mPhoneId);
+        if (ss != null) {
+            NetworkRegistrationInfo nri = ss.getNetworkRegistrationInfo(
+                    NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+            if (nri != null) {
+                DataSpecificRegistrationInfo dsri = nri.getDataSpecificInfo();
+                if (dsri != null) {
+                    mNrAvailable.setText(String.valueOf(dsri.isNrAvailable));
+                }
+            }
+            mNrState.setText(NetworkRegistrationInfo.nrStateToString(ss.getNrState()));
+            mNrFrequency.setText(ServiceState.frequencyRangeToString(ss.getNrFrequencyRange()));
+        } else {
+            log("Clear Nr stats by null service state");
+            mNrAvailable.setText("");
+            mNrState.setText("");
+            mNrFrequency.setText("");
+        }
+    }
+
     private TelephonyCallback mTelephonyCallback = new RadioInfoTelephonyCallback();
 
     private class RadioInfoTelephonyCallback extends TelephonyCallback
@@ -955,6 +1008,9 @@ public class PhoneInformationV2FragmentDataNetwork extends Fragment {
             updateNetworkType();
             updateRawRegistrationState(serviceState);
             updateImsProvisionedState();
+            if (!mHandler.hasMessages(EVENT_UPDATE_NR_STATS)) {
+                mHandler.post(() -> updateNrStats());
+            }
         }
 
         @Override
