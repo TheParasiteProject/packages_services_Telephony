@@ -27,8 +27,11 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.telephony.AccessNetworkConstants;
+import android.telephony.CellSignalStrength;
+import android.telephony.CellSignalStrengthNr;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.ServiceState;
+import android.telephony.SignalStrength;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyCallback;
 import android.telephony.TelephonyManager;
@@ -36,11 +39,13 @@ import android.telephony.satellite.SatelliteManager;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -65,20 +70,31 @@ public class SatelliteNetworkPingTest extends Activity {
     private TextView statsTextView;
     private TextView processView;
     private TextView mSatDataModeTextView;
+    private RadioGroup mProtocolRadioGroup;
     private int mSubId = SubscriptionManager.DEFAULT_SUBSCRIPTION_ID;
     private final ExecutorService pingExecutor = Executors.newSingleThreadExecutor();
     private Future<?> mPingFuture;
     private Button pingTest;
     private Button stopTest;
-    private Integer mPingResult;
+    private String mPingResult;
     private static final int INVALID_SUB_ID = -1;
     private TelephonyManager mTelephonyManager;
     private ServiceState mServiceState;
     private boolean mIsSatellite;
+    private TextView mSignalStrengthTextView;
+    private TextView mNetworkBandWidthTextView;
     private RadioInfoTelephonyCallback mTelephonyCallback;
+    private SignalStrength mSignalStrength;
+    // Protocol Selection
+    private enum PingProtocol {
+        ICMP,
+        HTTP_GET
+    }
+    private PingProtocol mSelectedProtocol = PingProtocol.ICMP;
 
     private class RadioInfoTelephonyCallback extends TelephonyCallback
-            implements TelephonyCallback.ServiceStateListener {
+            implements TelephonyCallback.ServiceStateListener,
+            TelephonyCallback.SignalStrengthsListener {
         @Override
         public void onServiceStateChanged(ServiceState serviceState) {
             if (serviceState == null) {
@@ -106,6 +122,12 @@ public class SatelliteNetworkPingTest extends Activity {
             mServiceState = serviceState;
             mIsSatellite = newNri.isNonTerrestrialNetwork();
         }
+
+        @Override
+        public void onSignalStrengthsChanged(SignalStrength signalStrength) {
+            mSignalStrength = signalStrength;
+            updateSignalStrength();
+        }
     }
 
     @Override
@@ -126,12 +148,26 @@ public class SatelliteNetworkPingTest extends Activity {
         mSatDataModeTextView = findViewById(R.id.satelliteDataMode);
         statsTextView = findViewById(R.id.statsTextView);
         processView = findViewById(R.id.ProcessView);
+        mSignalStrengthTextView = findViewById(R.id.signalStrengthTextView);
+        mNetworkBandWidthTextView = findViewById(R.id.networkBandWidthTextView);
         updateSatelliteDataMode(satDataMode);
 
         pingTest = findViewById(R.id.StartPingTest);
         stopTest = findViewById(R.id.StopPingTest);
+        mProtocolRadioGroup = findViewById(R.id.protocolRadioGroup);
         disableView();
         checkForNetwork();
+
+        // Protocol Selection Listener
+        mProtocolRadioGroup.setOnCheckedChangeListener((group, checkedId) -> {
+            if (checkedId == R.id.icmpRadioButton) {
+                mSelectedProtocol = PingProtocol.ICMP;
+                logd("Protocol selected: ICMP");
+            } else if (checkedId == R.id.httpRadioButton) {
+                mSelectedProtocol = PingProtocol.HTTP_GET;
+                logd("Protocol selected: HTTP GET");
+            }
+        });
 
         pingTest.setOnClickListener(view -> startSatellitePingTest());
 
@@ -183,6 +219,7 @@ public class SatelliteNetworkPingTest extends Activity {
             displayToast("Satellite Ping test started!");
             enableButton(stopTest);
             disableButton(pingTest);
+            disableRadioButton();
             makeSatelliteDataAnalysisPing();
         } else {
             displayToast("Satellite Ping test is already running!");
@@ -204,6 +241,7 @@ public class SatelliteNetworkPingTest extends Activity {
             isSatelliteNetworkAnalysisRequested = false;
             enableButton(pingTest);
             disableButton(stopTest);
+            enableRadioButton();
         } else {
             displayToast("Ping test: Not started or stopped.");
         }
@@ -270,23 +308,23 @@ public class SatelliteNetworkPingTest extends Activity {
     }
 
     private void disableButton(Button button) {
-        runOnUiThread(
-                new Runnable() {
-                    @Override
-                    public void run() {
-                        button.setEnabled(false);
-                    }
-                });
+        runOnUiThread(() -> button.setEnabled(false));
     }
 
     private void enableButton(Button button) {
-        runOnUiThread(
-                new Runnable() {
-                    @Override
-                    public void run() {
-                        button.setEnabled(true);
-                    }
-                });
+        runOnUiThread(() ->button.setEnabled(true));
+    }
+
+    private void disableRadioButton() {
+        for (int i = 0; i < mProtocolRadioGroup.getChildCount(); i++) {
+            mProtocolRadioGroup.getChildAt(i).setEnabled(false);
+        }
+    }
+
+    private void enableRadioButton() {
+        for (int i = 0; i < mProtocolRadioGroup.getChildCount(); i++) {
+            mProtocolRadioGroup.getChildAt(i).setEnabled(true);
+        }
     }
 
     private void makePing() {
@@ -296,7 +334,11 @@ public class SatelliteNetworkPingTest extends Activity {
                 PingTask pingTask = new PingTask();
                 long startTime = System.currentTimeMillis();
                 if (!isSatelliteNetworkAnalysisRequested || mNetwork == null) return;
-                mPingResult = pingTask.pingIcmp();
+                if (mSelectedProtocol == PingProtocol.ICMP) {
+                    mPingResult = pingTask.pingIcmp();
+                } else {
+                    mPingResult = pingTask.ping(mNetwork);
+                }
                 if (!isSatelliteNetworkAnalysisRequested || mNetwork == null) return;
                 long latency = System.currentTimeMillis() - startTime;
                 logd(String.format("makePing: latency: %s, Ping result: %s", latency, mPingResult));
@@ -428,6 +470,55 @@ public class SatelliteNetworkPingTest extends Activity {
                 };
         mSatDataModeTextView.setText(satData);
         mSatDataModeTextView.setVisibility(View.VISIBLE);
+    }
+
+    private void updateSignalStrength() {
+        if (mServiceState == null || mServiceState.getState() != ServiceState.STATE_IN_SERVICE) {
+            return;
+        }
+
+        mSignalStrengthTextView.setText(buildCellInfoString());
+        int [] networkBandWidth = mServiceState.getCellBandwidths();
+        if (networkBandWidth != null && networkBandWidth.length > 0) {
+            logd(String.format("networkBandWidth: %sMHz", networkBandWidth[0] / 1000));
+            mNetworkBandWidthTextView.setText(String.format("Network BandWidth: %sMHz",
+                    networkBandWidth[0] / 1000));
+            mNetworkBandWidthTextView.setVisibility(View.VISIBLE);
+        }
+        mSignalStrengthTextView.setVisibility(View.VISIBLE);
+    }
+
+    private String buildCellInfoString() {
+        StringBuilder value = new StringBuilder("Signal Strength: ");
+        value.append(buildLteInfoString());
+        value.append((buildNrInfoString()));
+        return value.toString();
+    }
+
+    private String buildLteInfoString() {
+        return String.format(
+                "\nLTE- RSRP: %s, RSSNR: %s, RSRQ: %s",
+                getCellInfoDisplayString(mSignalStrength.getLteRsrp()),
+                getCellInfoDisplayString(mSignalStrength.getLteRsrq()),
+                getCellInfoDisplayString(mSignalStrength.getLteRssnr()));
+    }
+
+    private String buildNrInfoString() {
+        List<CellSignalStrength> ssNrs = mSignalStrength.getCellSignalStrengths();
+
+        String nrInfo = "";
+        for (CellSignalStrength ssNr: ssNrs) {
+            if (ssNr instanceof CellSignalStrengthNr) {
+                nrInfo = String.format("\n5G- SSRSRP: %s, SSRSRQ: %s",
+                        getCellInfoDisplayString(((CellSignalStrengthNr) ssNr).getSsRsrp()),
+                        getCellInfoDisplayString(((CellSignalStrengthNr) ssNr).getSsRsrq()));
+            }
+        }
+        return nrInfo;
+    }
+
+    private String getCellInfoDisplayString(int i) {
+        return (i != Integer.MAX_VALUE) ? Integer.toString(i) : "";
     }
 
     private void logd(String message) {

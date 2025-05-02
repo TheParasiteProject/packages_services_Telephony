@@ -65,14 +65,38 @@ class PingTask{
         }
     }
 
-    public Integer pingIcmp() {
+    public String pingIcmp() {
         String command = "/system/bin/ping -c 1 -W " + PING_TIMEOUT_SECONDS + " "
                 + PING_TARGET_HOST;
         try {
-            Log.d("PingTask", "ping " + command);
-            int result = Runtime.getRuntime().exec(command).waitFor();
-            Log.d("PingTask", "Ping Success");
-            return result;
+            Process process = Runtime.getRuntime().exec(command);
+            try (InputStream inputStream = process.getInputStream();
+                 java.util.Scanner s =
+                         new java.util.Scanner(inputStream).useDelimiter("\\A")) {
+                String stdout = s.hasNext() ? s.next() : "";
+                if (!stdout.isEmpty()) {
+                    Log.d("PingTask", "Ping stdout: " + stdout);
+                }
+            }
+
+            try (InputStream errorStream = process.getErrorStream();
+                 java.util.Scanner s =
+                         new java.util.Scanner(errorStream).useDelimiter("\\A")) {
+                String stderr = s.hasNext() ? s.next() : "";
+                if (!stderr.isEmpty()) {
+                    Log.e("PingTask", "Ping stderr: " + stderr);
+                }
+            }
+
+            int result = process.waitFor();
+            Log.d("PingTask", "result: " + result);
+            if (result != 0) {
+                Log.d("PingTask", "Ping failed");
+                return null;
+            } else {
+                Log.d("PingTask", "Ping Passed");
+                return Integer.toString(result);
+            }
         } catch (Exception e) {
             Log.d("PingTask", "exception: " + e);
         }

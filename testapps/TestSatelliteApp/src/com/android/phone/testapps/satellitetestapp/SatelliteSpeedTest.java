@@ -27,8 +27,11 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.telephony.AccessNetworkConstants;
+import android.telephony.CellSignalStrength;
+import android.telephony.CellSignalStrengthNr;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.ServiceState;
+import android.telephony.SignalStrength;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyCallback;
 import android.telephony.TelephonyManager;
@@ -44,6 +47,7 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 
+import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -83,6 +87,9 @@ public class SatelliteSpeedTest extends Activity
     private RadioInfoTelephonyCallback mTelephonyCallback;
     private ServiceState mServiceState;
     private boolean mIsSatellite;
+    private SignalStrength mSignalStrength;
+    private TextView mNetworkBandWidthTextView;
+    private TextView mSignalStrengthTextView;
 
     enum TaskType {
         NONE,
@@ -126,6 +133,8 @@ public class SatelliteSpeedTest extends Activity
         mSatDataModeTextView = findViewById(R.id.satelliteDataMode);
         mProgressBar = findViewById(R.id.ProgressBar);
         mStatusText = findViewById(R.id.StatusText);
+        mNetworkBandWidthTextView = findViewById(R.id.networkBandWidthTextView);
+        mSignalStrengthTextView = findViewById(R.id.signalStrengthTextView);
         mSpeedText = findViewById(R.id.SpeedText);
         mProgressText = findViewById(R.id.ProgressText);
         mTimeText = findViewById(R.id.TimeText);
@@ -216,7 +225,8 @@ public class SatelliteSpeedTest extends Activity
     }
 
     private class RadioInfoTelephonyCallback extends TelephonyCallback
-            implements TelephonyCallback.ServiceStateListener {
+            implements TelephonyCallback.ServiceStateListener,
+            TelephonyCallback.SignalStrengthsListener {
         @Override
         public void onServiceStateChanged(ServiceState serviceState) {
             if (serviceState == null) return;
@@ -237,6 +247,12 @@ public class SatelliteSpeedTest extends Activity
                 logw("Satellite service lost during active task.");
                 handleNetworkLoss();
             }
+        }
+
+        @Override
+        public void onSignalStrengthsChanged(SignalStrength signalStrength) {
+            mSignalStrength = signalStrength;
+            updateSignalStrength();
         }
     }
 
@@ -738,6 +754,55 @@ public class SatelliteSpeedTest extends Activity
         long minutes = (millis / (1000 * 60)) % 60;
         long hours = (millis / (1000 * 60 * 60));
         return String.format(Locale.getDefault(), "%02d:%02d:%02d", hours, minutes, seconds);
+    }
+
+    private void updateSignalStrength() {
+        if (mServiceState == null || mServiceState.getState() != ServiceState.STATE_IN_SERVICE) {
+            return;
+        }
+
+        mSignalStrengthTextView.setText(buildCellInfoString());
+        int [] networkBandWidth = mServiceState.getCellBandwidths();
+        if (networkBandWidth != null && networkBandWidth.length > 0) {
+            logd(String.format("networkBandWidth: %sMHz", networkBandWidth[0] / 1000));
+            mNetworkBandWidthTextView.setText(String.format("Network BandWidth: %sMHz",
+                    networkBandWidth[0] / 1000));
+            mNetworkBandWidthTextView.setVisibility(View.VISIBLE);
+        }
+        mSignalStrengthTextView.setVisibility(View.VISIBLE);
+    }
+
+    private String buildCellInfoString() {
+        StringBuilder value = new StringBuilder("Signal Strength: ");
+        value.append(buildLteInfoString());
+        value.append((buildNrInfoString()));
+        return value.toString();
+    }
+
+    private String buildLteInfoString() {
+        return String.format(
+                "\nLTE- RSRP: %s, RSSNR: %s, RSRQ: %s",
+                getCellInfoDisplayString(mSignalStrength.getLteRsrp()),
+                getCellInfoDisplayString(mSignalStrength.getLteRsrq()),
+                getCellInfoDisplayString(mSignalStrength.getLteRssnr()));
+    }
+
+    private String buildNrInfoString() {
+        List<CellSignalStrength> ssNrs = mSignalStrength.getCellSignalStrengths();
+
+        String nrInfo = "";
+        for (CellSignalStrength ssNr: ssNrs) {
+            if (ssNr instanceof CellSignalStrengthNr) {
+                nrInfo = String.format("\n5G- SSRSRP: %s, SSRSRQ: %s",
+                        getCellInfoDisplayString(((CellSignalStrengthNr) ssNr).getSsRsrp()),
+                        getCellInfoDisplayString(((CellSignalStrengthNr) ssNr).getSsRsrq()));
+            }
+        }
+        return nrInfo;
+    }
+
+    private String getCellInfoDisplayString(int i) {
+        return (i != Integer.MAX_VALUE) ? Integer.toString(i) : "";
     }
 
     private void loge(String string) {
