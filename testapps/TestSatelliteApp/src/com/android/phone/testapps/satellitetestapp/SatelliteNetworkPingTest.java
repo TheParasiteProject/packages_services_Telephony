@@ -43,6 +43,7 @@ import androidx.annotation.NonNull;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 public class SatelliteNetworkPingTest extends Activity {
 
@@ -66,13 +67,15 @@ public class SatelliteNetworkPingTest extends Activity {
     private TextView mSatDataModeTextView;
     private int mSubId = SubscriptionManager.DEFAULT_SUBSCRIPTION_ID;
     private final ExecutorService pingExecutor = Executors.newSingleThreadExecutor();
+    private Future<?> mPingFuture;
     private Button pingTest;
     private Button stopTest;
+    private Integer mPingResult;
     private static final int INVALID_SUB_ID = -1;
     private TelephonyManager mTelephonyManager;
-    private RadioInfoTelephonyCallback mTelephonyCallback;
     private ServiceState mServiceState;
     private boolean mIsSatellite;
+    private RadioInfoTelephonyCallback mTelephonyCallback;
 
     private class RadioInfoTelephonyCallback extends TelephonyCallback
             implements TelephonyCallback.ServiceStateListener {
@@ -81,7 +84,7 @@ public class SatelliteNetworkPingTest extends Activity {
             if (serviceState == null) {
                 return;
             }
-            Log.d(TAG, "onServiceStateChanged: ServiceState=" + serviceState);
+            logd("onServiceStateChanged: ServiceState=" + serviceState);
             NetworkRegistrationInfo newNri =
                     serviceState.getNetworkRegistrationInfo(
                             NetworkRegistrationInfo.DOMAIN_PS,
@@ -92,8 +95,9 @@ public class SatelliteNetworkPingTest extends Activity {
                                 && serviceState.getDataRegistrationState()
                                         != ServiceState.STATE_IN_SERVICE
                         || !newNri.isNonTerrestrialNetwork()) {
-                    Log.d(TAG, "NTN to OOS");
+                    logd("NTN to OOS");
                     if (mNetwork != null) {
+                        mNetwork = null;
                         displayProcessUI("Satellite network lost");
                         disableView();
                     }
@@ -145,7 +149,7 @@ public class SatelliteNetworkPingTest extends Activity {
         if (mTelephonyCallback == null) {
             mTelephonyCallback = new RadioInfoTelephonyCallback();
             if (mTelephonyManager != null) {
-                Log.d(TAG, "Register for service state change");
+                logd("Register for service state change");
                 mTelephonyManager.registerTelephonyCallback(
                         mContext.getMainExecutor(), mTelephonyCallback);
             }
@@ -211,10 +215,17 @@ public class SatelliteNetworkPingTest extends Activity {
                 new NetworkCallback() {
                     @Override
                     public void onAvailable(@NonNull final Network network) {
-                        Log.d(TAG, "SatelliteConstrainNetworkCallback: onAvailable");
+                        logd("SatelliteConstrainNetworkCallback: onAvailable");
                         mNetwork = network;
                         if (isSatelliteNetworkAnalysisRequested) {
-                            makePing();
+                            try {
+                                if (mPingFuture != null) {
+                                    mPingFuture.get();
+                                }
+                            } catch (Exception e) {
+                                // Nothing
+                            }
+                            mHandler.postDelayed(() -> makePing(), 500);
                             enableButton(stopTest);
                         } else {
                             enableButton(pingTest);
@@ -227,23 +238,24 @@ public class SatelliteNetworkPingTest extends Activity {
                         if (mNetwork != null && mNetwork.equals(network)) {
                             mNetwork = null;
                             displayProcessUI("Satellite network lost");
+                            if (mPingFuture != null && !mPingFuture.isDone()) {
+                                mPingFuture.cancel(true);
+                            }
                         }
-                        releasingNetwork();
                         disableView();
-                        Log.d(TAG, "SatelliteConstrainNetworkCallback: Network Lost " + network);
-                        requestingNetwork();
+                        logd("SatelliteConstrainNetworkCallback: Network Lost " + network);
                     }
 
                     @Override
                     public void onUnavailable() {
                         super.onUnavailable();
-                        Log.d(TAG, "SatelliteConstrainNetworkCallback : onUnavailable");
+                        logd("SatelliteConstrainNetworkCallback : onUnavailable");
                     }
 
                     @Override
                     public void onLosing(@NonNull Network arg1, int arg2) {
                         super.onLosing(arg1, arg2);
-                        Log.d(TAG, "SatelliteConstrainNetworkCallback: onLosing");
+                        logd("SatelliteConstrainNetworkCallback: onLosing");
                     }
                 };
         requestingNetwork();
@@ -278,56 +290,43 @@ public class SatelliteNetworkPingTest extends Activity {
     }
 
     private void makePing() {
-        pingExecutor.execute(
-                new Runnable() {
-                    @Override
-                    public void run() {
-                        String pingResult = null;
-                        try {
-                            PingTask pingTask = new PingTask();
-                            long startTime = System.currentTimeMillis();
-                            if (!isSatelliteNetworkAnalysisRequested) return;
-                            pingResult = pingTask.ping(mNetwork);
-                            if (!isSatelliteNetworkAnalysisRequested) return;
-                            long latency = System.currentTimeMillis() - startTime;
-                            if (pingResult != null) {
-                                passedSatelliteDataRequests = passedSatelliteDataRequests + 1;
-                                minSatelliteDataLatency =
-                                        Math.min(minSatelliteDataLatency, latency);
-                                maxSatelliteDataLatency =
-                                        Math.max(maxSatelliteDataLatency, latency);
-                                totalSatelliteDataLatency = totalSatelliteDataLatency + latency;
-                            } else {
-                                failedSatelliteDataRequests = failedSatelliteDataRequests + 1;
-                            }
-                            totalSatelliteDataRequests = totalSatelliteDataRequests + 1;
-                        } catch (Exception e) {
-                            Log.d(TAG, "Exception at ping: " + e);
-                        } finally {
-                            displayAnalysis();
-                            if (!isSatelliteNetworkAnalysisRequested) {
-                                displayProcessUI("");
-                                displayToast("Satellite Ping test stopped!");
-                            } else {
-                                if (mNetwork == null) {
-                                    // wait for connection to come back
-                                    displayProcessUI("Satellite network lost");
-                                } else if (pingResult == null) {
-                                    mHandler.postDelayed(
-                                            new Runnable() {
-                                                @Override
-                                                public void run() {
-                                                    makePing();
-                                                }
-                                            },
-                                            1000);
-                                } else {
-                                    makePing();
-                                }
-                            }
-                        }
+        mPingFuture = pingExecutor.submit(() -> {
+            mPingResult = null;
+            try {
+                PingTask pingTask = new PingTask();
+                long startTime = System.currentTimeMillis();
+                if (!isSatelliteNetworkAnalysisRequested || mNetwork == null) return;
+                mPingResult = pingTask.pingIcmp();
+                if (!isSatelliteNetworkAnalysisRequested || mNetwork == null) return;
+                long latency = System.currentTimeMillis() - startTime;
+                logd(String.format("makePing: latency: %s, Ping result: %s", latency, mPingResult));
+                if (mPingResult != null && mNetwork != null) {
+                    passedSatelliteDataRequests = passedSatelliteDataRequests + 1;
+                    minSatelliteDataLatency =
+                            Math.min(minSatelliteDataLatency, latency);
+                    maxSatelliteDataLatency =
+                            Math.max(maxSatelliteDataLatency, latency);
+                    totalSatelliteDataLatency = totalSatelliteDataLatency + latency;
+                } else {
+                    failedSatelliteDataRequests = failedSatelliteDataRequests + 1;
+                }
+                totalSatelliteDataRequests = totalSatelliteDataRequests + 1;
+            } catch (Exception e) {
+                logd("Exception at ping: " + e);
+            } finally {
+                displayAnalysis();
+                if (!isSatelliteNetworkAnalysisRequested) {
+                    displayProcessUI("");
+                    displayToast("Satellite Ping test stopped!");
+                } else {
+                    if (mNetwork == null) {
+                        displayProcessUI("Satellite network lost");
+                    } else {
+                        mHandler.postDelayed(() -> makePing(), 500);
                     }
-                });
+                }
+            }
+        });
     }
 
     private void displayAnalysis() {
@@ -384,7 +383,7 @@ public class SatelliteNetworkPingTest extends Activity {
     }
 
     private void requestingNetwork() {
-        Log.e(TAG, "Requesting Network");
+        loge("Requesting Network");
         if (mRequest == null) {
             mRequest =
                     new NetworkRequest.Builder()
@@ -397,20 +396,20 @@ public class SatelliteNetworkPingTest extends Activity {
 
         // Requesting for Network
         mConnectivityManager.requestNetwork(mRequest, mSatelliteConstrainNetworkCallback);
-        Log.e(TAG, "onClick + " + mRequest);
+        loge("onClick + " + mRequest);
     }
 
     private void releasingNetwork() {
-        Log.e(TAG, "Releasing Network");
+        loge("Releasing Network");
         try {
             mConnectivityManager.unregisterNetworkCallback(mSatelliteConstrainNetworkCallback);
         } catch (Exception e) {
-            Log.d("SatelliteDataConstrained", "Exception: " + e);
+            logd("Exception: " + e);
         }
     }
 
     private void refreshDataMode() {
-        SatelliteManager satelliteManager = new SatelliteManager(mContext);
+        SatelliteManager satelliteManager = mContext.getSystemService(SatelliteManager.class);
         int satelliteDataMode = satelliteManager.getSatelliteDataSupportMode(mSubId);
         updateSatelliteDataMode(satelliteDataMode);
     }
@@ -429,5 +428,13 @@ public class SatelliteNetworkPingTest extends Activity {
                 };
         mSatDataModeTextView.setText(satData);
         mSatDataModeTextView.setVisibility(View.VISIBLE);
+    }
+
+    private void logd(String message) {
+        Log.d(TAG, message);
+    }
+
+    private void loge(String message) {
+        Log.e(TAG, message);
     }
 }
