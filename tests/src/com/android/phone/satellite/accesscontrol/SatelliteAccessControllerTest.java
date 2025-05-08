@@ -23,6 +23,7 @@ import static android.telephony.satellite.SatelliteManager.KEY_SATELLITE_ACCESS_
 import static android.telephony.satellite.SatelliteManager.KEY_SATELLITE_COMMUNICATION_ALLOWED;
 import static android.telephony.satellite.SatelliteManager.KEY_SATELLITE_PROVISIONED;
 import static android.telephony.satellite.SatelliteManager.KEY_SATELLITE_SUPPORTED;
+import static android.telephony.satellite.SatelliteManager.SATELLITE_DISALLOWED_REASON_UNSUPPORTED_DEFAULT_MSG_APP;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_RESULT_ACCESS_BARRED;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_RESULT_ERROR;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_RESULT_LOCATION_DISABLED;
@@ -2789,6 +2790,28 @@ public class SatelliteAccessControllerTest extends TelephonyTestBase {
         assertFalse(mSatelliteAccessControllerUT.isWaitForCurrentLocationTimerStarted());
     }
 
+    @Test
+    public void testDefaultSmsAppChangedBroadcastReceiver() {
+        // Send different intent to receiver
+        assertTrue(mSatelliteAccessControllerUT.getSatelliteDisallowedReasons().isEmpty());
+        Intent intent = new Intent();
+        intent.setAction(Intent.ACTION_PACKAGE_ADDED);
+        mSatelliteAccessControllerUT.getDefaultSmsAppChangedBroadcastReceiver().onReceive(
+                mMockContext, intent);
+        mTestableLooper.processAllMessages();
+        assertTrue(mSatelliteAccessControllerUT.getSatelliteDisallowedReasons().isEmpty());
+
+        // Send ACTION_PACKAGE_CHANGED, default SMS app does not support satellite communication
+        assertTrue(mSatelliteAccessControllerUT.getSatelliteDisallowedReasons().isEmpty());
+        intent.setAction(Intent.ACTION_PACKAGE_CHANGED);
+        mSatelliteAccessControllerUT.getDefaultSmsAppChangedBroadcastReceiver().onReceive(
+                mMockContext, intent);
+        mTestableLooper.processAllMessages();
+        assertTrue(mSatelliteAccessControllerUT.getSatelliteDisallowedReasons().contains(
+                SATELLITE_DISALLOWED_REASON_UNSUPPORTED_DEFAULT_MSG_APP));
+    }
+
+
     private void sendSatelliteCommunicationAllowedEvent() {
         Pair<Integer, ResultReceiver> requestPair =
                 new Pair<>(DEFAULT_SUBSCRIPTION_ID,
@@ -3006,6 +3029,10 @@ public class SatelliteAccessControllerTest extends TelephonyTestBase {
 
         public BroadcastReceiver getLocationBroadcastReceiver() {
             return mLocationModeChangedBroadcastReceiver;
+        }
+
+        public BroadcastReceiver getDefaultSmsAppChangedBroadcastReceiver() {
+            return mDefaultSmsAppChangedBroadcastReceiver;
         }
 
         public void setLocationRequestCancellationSignalAsNull(boolean isNull) {
