@@ -3165,6 +3165,11 @@ public class SatelliteAccessControllerTest extends TelephonyTestBase {
             return elapsedRealtimeNanos;
         }
 
+        @Override
+        protected void checkSatelliteAccessRestrictionUsingGPS() {
+            super.checkSatelliteAccessRestrictionUsingGPS();
+        }
+
         public boolean isKeepOnDeviceAccessControllerResourcesTimerStarted() {
             return hasMessages(EVENT_KEEP_ON_DEVICE_ACCESS_CONTROLLER_RESOURCES_TIMEOUT);
         }
