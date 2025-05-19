@@ -380,7 +380,6 @@ public class SatelliteAccessControllerTest extends TelephonyTestBase {
                 mock(ControllerMetricsStats.class));
         replaceInstance(CarrierRoamingSatelliteControllerStats.class, "sInstance", null,
                 mCarrierRoamingSatelliteControllerStats);
-        when(mMockSatelliteController.getSatellitePhone()).thenReturn(mMockPhone);
         when(mMockPhone.getSubId()).thenReturn(SubscriptionManager.getDefaultSubscriptionId());
 
         when(mMockContext.getResources()).thenReturn(mMockResources);
