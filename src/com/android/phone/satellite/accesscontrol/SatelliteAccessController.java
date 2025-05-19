@@ -283,12 +283,6 @@ public class SatelliteAccessController extends Handler {
     @NonNull
     private final ResultReceiver mInternalUpdateSystemSelectionChannelsResultReceiver;
     @NonNull
-    protected final Object mLock = new Object();
-    @GuardedBy("mLock")
-    @NonNull
-    private final List<CheckingAllowedStateRequestArguments>
-        mCheckingAllowedStateRequests = new ArrayList<>();
-    @NonNull
     private final Set<ResultReceiver>
             mUpdateSystemSelectionChannelsResultReceivers = new HashSet<>();
 
@@ -366,7 +360,6 @@ public class SatelliteAccessController extends Handler {
             mSatelliteCommunicationAccessStateChangedListeners = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<IBinder, ISatelliteDisallowedReasonsCallback>
             mSatelliteDisallowedReasonsChangedListeners = new ConcurrentHashMap<>();
-    private final Object mSatelliteDisallowedReasonsLock = new Object();
 
     protected static final long ALLOWED_STATE_CACHE_VALID_DURATION_NANOS =
             TimeUnit.HOURS.toNanos(4);
@@ -376,8 +369,6 @@ public class SatelliteAccessController extends Handler {
     private final ConcurrentHashMap<Integer, Notification> mSatelliteUnAvailableNotifications =
             new ConcurrentHashMap<>();
     private NotificationManager mNotificationManager;
-    @GuardedBy("mSatelliteDisallowedReasonsLock")
-    private final List<Integer> mSatelliteDisallowedReasons = new ArrayList<>();
 
     protected BroadcastReceiver mLocationModeChangedBroadcastReceiver = new BroadcastReceiver() {
         @Override
@@ -436,6 +427,8 @@ public class SatelliteAccessController extends Handler {
 
     /** All the variables that require lock are declared here. */
     // Key: Config ID; Value: SatelliteAccessConfiguration
+    @NonNull
+    protected final Object mLock = new Object();
     @GuardedBy("mLock")
     @Nullable
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
@@ -459,6 +452,9 @@ public class SatelliteAccessController extends Handler {
     @GuardedBy("mLock")
     @Nullable
     private File mOverriddenSatelliteAccessConfigFile;
+    private final Object mSatelliteDisallowedReasonsLock = new Object();
+    @GuardedBy("mSatelliteDisallowedReasonsLock")
+    private final List<Integer> mSatelliteDisallowedReasons = new ArrayList<>();
 
     /**
      * All the variables declared here should only be accessed by methods that run inside the
@@ -468,6 +464,9 @@ public class SatelliteAccessController extends Handler {
     protected CancellationSignal mLocationRequestCancellationSignal = null;
     @Nullable
     private Location mFreshLastKnownLocation = null;
+    @NonNull
+    private final List<CheckingAllowedStateRequestArguments>
+            mCheckingAllowedStateRequests = new ArrayList<>();
 
 
     /**
@@ -1695,17 +1694,15 @@ public class SatelliteAccessController extends Handler {
 
     private void handleCmdIsSatelliteAllowedForCurrentLocation(
             @NonNull CheckingAllowedStateRequestArguments requestArguments) {
-        synchronized (mLock) {
-            mCheckingAllowedStateRequests.add(requestArguments);
-            if (mCheckingAllowedStateRequests.size() > 1) {
-                plogd("requestIsCommunicationAllowedForCurrentLocation is already being "
-                        + "processed");
-                return;
-            }
-            mTotalCheckingStartTimeMillis.set(System.currentTimeMillis());
-            mSatelliteController.requestIsSatelliteSupported(
-                    mInternalSatelliteSupportedResultReceiver);
+        mCheckingAllowedStateRequests.add(requestArguments);
+        if (mCheckingAllowedStateRequests.size() > 1) {
+            plogd("requestIsCommunicationAllowedForCurrentLocation is already being "
+                    + "processed");
+            return;
         }
+        mTotalCheckingStartTimeMillis.set(System.currentTimeMillis());
+        mSatelliteController.requestIsSatelliteSupported(
+                mInternalSatelliteSupportedResultReceiver);
     }
 
     private void handleWaitForCurrentLocationTimedOutEvent() {
@@ -1846,15 +1843,13 @@ public class SatelliteAccessController extends Handler {
                 break;
         }
 
-        synchronized (mLock) {
-            for (CheckingAllowedStateRequestArguments requestArguments
-                    : mCheckingAllowedStateRequests) {
-                requestArguments.getResultReceiver().send(resultCode, resultData);
-                mSatelliteController.decrementResultReceiverCount(
+        for (CheckingAllowedStateRequestArguments requestArguments
+                : mCheckingAllowedStateRequests) {
+            requestArguments.getResultReceiver().send(resultCode, resultData);
+            mSatelliteController.decrementResultReceiverCount(
                     "SAC:requestIsCommunicationAllowedForCurrentLocation");
-            }
-            mCheckingAllowedStateRequests.clear();
         }
+        mCheckingAllowedStateRequests.clear();
         if (!shouldRetryValidatingPossibleChangeInAllowedRegion(resultCode)) {
             setIsSatelliteAllowedRegionPossiblyChanged(false);
         }
@@ -3456,10 +3451,7 @@ public class SatelliteAccessController extends Handler {
                     plogd(LOCATION_PROVIDER + " provider is enabled");
                 }
 
-                boolean isRequestsEmpty;
-                synchronized (mLock) {
-                    isRequestsEmpty = mCheckingAllowedStateRequests.isEmpty();
-                }
+                boolean isRequestsEmpty  = mCheckingAllowedStateRequests.isEmpty();
                 if (isRequestsEmpty) {
                     sendRequestAsync(EVENT_LOCATION_SETTINGS_ENABLED, null);
                 } else {
