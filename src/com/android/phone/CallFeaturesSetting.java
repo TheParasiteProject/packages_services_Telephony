@@ -106,6 +106,8 @@ public class CallFeaturesSetting extends PreferenceActivity
     private static final String BUTTON_VP_KEY = "button_voice_privacy_key";
     private static final String BUTTON_VIBRATING_KEY =
             "button_vibrating_for_outgoing_call_accepted_key";
+    private static final String BUTTON_PLAYING_TONE_KEY =
+            "button_playing_tone_for_outgoing_call_accepted_key";
 
     private Phone mPhone;
     private ImsManager mImsMgr;
@@ -119,6 +121,7 @@ public class CallFeaturesSetting extends PreferenceActivity
     private Preference mButtonWifiCalling;
     private boolean mDisallowedConfig = false;
     private SwitchPreference mButtonVibratingForMoCallAccepted;
+    private SwitchPreference mButtonPlayingToneForMoCallAccepted;
     private int mCallConnectedIndicator = TelecomManager.CALL_CONNECTED_INDICATOR_NONE;
 
     /*
@@ -178,9 +181,15 @@ public class CallFeaturesSetting extends PreferenceActivity
                     mButtonAutoRetry.isChecked() ? 1 : 0);
             return true;
         } else if (preference == mButtonVibratingForMoCallAccepted) {
-            final int prefs = mButtonVibratingForMoCallAccepted.isChecked()?
-                    mCallConnectedIndicator | TelecomManager.CALL_CONNECTED_INDICATOR_VIBRATION
+            final int prefs = mButtonVibratingForMoCallAccepted.isChecked()
+                    ? mCallConnectedIndicator | TelecomManager.CALL_CONNECTED_INDICATOR_VIBRATION
                     : mCallConnectedIndicator & ~TelecomManager.CALL_CONNECTED_INDICATOR_VIBRATION;
+            mTelecomManager.setCallConnectedIndicatorPreference(prefs);
+            return true;
+        } else if (preference == mButtonPlayingToneForMoCallAccepted) {
+            final int prefs = mButtonPlayingToneForMoCallAccepted.isChecked()
+                    ? mCallConnectedIndicator | TelecomManager.CALL_CONNECTED_INDICATOR_TONE
+                    : mCallConnectedIndicator & ~TelecomManager.CALL_CONNECTED_INDICATOR_TONE;
             mTelecomManager.setCallConnectedIndicatorPreference(prefs);
             return true;
         } else if (preference == preferenceScreen.findPreference(
@@ -387,10 +396,13 @@ public class CallFeaturesSetting extends PreferenceActivity
                 .createForSubscriptionId(mPhone.getSubId());
 
         mButtonVibratingForMoCallAccepted = (SwitchPreference) findPreference(BUTTON_VIBRATING_KEY);
+        mButtonPlayingToneForMoCallAccepted = (SwitchPreference) findPreference(
+                BUTTON_PLAYING_TONE_KEY);
         if (!getResources().getBoolean(
                 R.bool.show_call_connected_indicator_preference)) {
             Preference phoneAccountSettingsPreference = findPreference(PHONE_ACCOUNT_SETTINGS_KEY);
             getPreferenceScreen().removePreference(mButtonVibratingForMoCallAccepted);
+            getPreferenceScreen().removePreference(mButtonPlayingToneForMoCallAccepted);
         }
         mCallConnectedIndicator = mTelecomManager.getCallConnectedIndicatorPreference();
         // Note: The PhoneAccountSettingsActivity accessible via the
@@ -403,10 +415,14 @@ public class CallFeaturesSetting extends PreferenceActivity
             Preference phoneAccountSettingsPreference = findPreference(PHONE_ACCOUNT_SETTINGS_KEY);
             getPreferenceScreen().removePreference(phoneAccountSettingsPreference);
             getPreferenceScreen().removePreference(mButtonVibratingForMoCallAccepted);
+            getPreferenceScreen().removePreference(mButtonPlayingToneForMoCallAccepted);
         } else {
             mButtonVibratingForMoCallAccepted.setChecked((mCallConnectedIndicator
                     & TelecomManager.CALL_CONNECTED_INDICATOR_VIBRATION) > 0);
             mButtonVibratingForMoCallAccepted.setOnPreferenceChangeListener(this);
+            mButtonPlayingToneForMoCallAccepted.setChecked((mCallConnectedIndicator
+                    & TelecomManager.CALL_CONNECTED_INDICATOR_TONE) > 0);
+            mButtonPlayingToneForMoCallAccepted.setOnPreferenceChangeListener(this);
         }
 
         PreferenceScreen prefSet = getPreferenceScreen();
