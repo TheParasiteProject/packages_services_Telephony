@@ -3419,6 +3419,7 @@ public class TelephonyShellCommand extends BasicShellCommandHandler {
         PrintWriter errPw = getErrPrintWriter();
         int handoverType = -1;
         int delaySeconds = 0;
+        int simSlotIndex = 0;
 
         String opt;
         while ((opt = getNextOption()) != null) {
@@ -3443,14 +3444,24 @@ public class TelephonyShellCommand extends BasicShellCommandHandler {
                     }
                     break;
                 }
+                case "-s": {
+                    try {
+                        simSlotIndex = Integer.parseInt(getNextArgRequired());
+                    } catch (NumberFormatException e) {
+                        errPw.println("SetEmergencyCallToSatelliteHandoverType: require an integer"
+                                + " for simSlotIndex");
+                        return -1;
+                    }
+                    break;
+                }
             }
         }
         Log.d(LOG_TAG, "handleSetEmergencyCallToSatelliteHandoverType: handoverType="
-                + handoverType + ", delaySeconds=" + delaySeconds);
+            + handoverType + ", delaySeconds=" + delaySeconds + ", simSlotIndex=" + simSlotIndex);
 
         try {
-            boolean result =
-                    mInterface.setEmergencyCallToSatelliteHandoverType(handoverType, delaySeconds);
+            boolean result = mInterface.setEmergencyCallToSatelliteHandoverType(
+                handoverType, delaySeconds, simSlotIndex);
             if (VDBG) {
                 Log.v(LOG_TAG, "setEmergencyCallToSatelliteHandoverType result =" + result);
             }
