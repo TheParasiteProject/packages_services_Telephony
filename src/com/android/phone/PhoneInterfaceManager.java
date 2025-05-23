@@ -14526,10 +14526,13 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
      *                     To disable the override, use -1 for handoverType.
      * @param delaySeconds The event EVENT_DISPLAY_EMERGENCY_MESSAGE will be sent to Dialer
      *                     delaySeconds after the emergency call starts.
+     * @param simSlotId The SIM slot ID to use for loading T911 conversation thread.
      * @return {@code true} if the handover type is set successfully, {@code false} otherwise.
      */
-    public boolean setEmergencyCallToSatelliteHandoverType(int handoverType, int delaySeconds) {
-        Log.d(LOG_TAG, "setEmergencyCallToSatelliteHandoverType - " + handoverType);
+    public boolean setEmergencyCallToSatelliteHandoverType(
+        int handoverType, int delaySeconds, int simSlotId) {
+        Log.d(LOG_TAG, "setEmergencyCallToSatelliteHandoverType - " + handoverType
+            + ", delaySeconds=" + delaySeconds + ", simSlotId=" + simSlotId);
         TelephonyPermissions.enforceShellOnly(
                 Binder.getCallingUid(), "setEmergencyCallToSatelliteHandoverType");
         TelephonyPermissions.enforceCallingOrSelfModifyPermissionOrCarrierPrivilege(mApp,
@@ -14538,7 +14541,7 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
         final long identity = Binder.clearCallingIdentity();
         try {
             return mSatelliteController.setEmergencyCallToSatelliteHandoverType(
-                    handoverType, delaySeconds);
+                    handoverType, delaySeconds, simSlotId);
         } finally {
             Binder.restoreCallingIdentity(identity);
         }
