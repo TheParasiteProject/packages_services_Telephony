@@ -380,7 +380,6 @@ public class SatelliteAccessControllerTest extends TelephonyTestBase {
                 mock(ControllerMetricsStats.class));
         replaceInstance(CarrierRoamingSatelliteControllerStats.class, "sInstance", null,
                 mCarrierRoamingSatelliteControllerStats);
-        when(mMockSatelliteController.getSatellitePhone()).thenReturn(mMockPhone);
         when(mMockPhone.getSubId()).thenReturn(SubscriptionManager.getDefaultSubscriptionId());
 
         when(mMockContext.getResources()).thenReturn(mMockResources);
@@ -792,7 +791,7 @@ public class SatelliteAccessControllerTest extends TelephonyTestBase {
         ArgumentCaptor<Bundle> bundleCaptor = ArgumentCaptor.forClass(Bundle.class);
         ArgumentCaptor<Integer> regionalConfigIdCaptor = ArgumentCaptor.forClass(Integer.class);
         replaceInstance(SatelliteAccessController.class, "mS2Level",
-                mSatelliteAccessControllerUT, DEFAULT_S2_LEVEL);
+                mSatelliteAccessControllerUT, new AtomicInteger(DEFAULT_S2_LEVEL));
         Iterator<SatelliteAccessController.CheckingAllowedStateRequestArguments>
             mockRequestArgumentIterator = mock(Iterator.class);
         SatelliteAccessController.CheckingAllowedStateRequestArguments mockRequestArguments =
@@ -1914,7 +1913,7 @@ public class SatelliteAccessControllerTest extends TelephonyTestBase {
                 SatelliteAccessController.class,
                 "mS2Level",
                 mSatelliteAccessControllerUT,
-                DEFAULT_S2_LEVEL);
+                new AtomicInteger(DEFAULT_S2_LEVEL));
         when(mMockFeatureFlags.carrierRoamingNbIotNtn()).thenReturn(true);
         when(mMockContext.getResources()).thenReturn(mMockResources);
         when(mMockResources.getBoolean(
@@ -3164,6 +3163,11 @@ public class SatelliteAccessControllerTest extends TelephonyTestBase {
         @Override
         protected long getElapsedRealtimeNanos() {
             return elapsedRealtimeNanos;
+        }
+
+        @Override
+        protected void checkSatelliteAccessRestrictionUsingGPS() {
+            super.checkSatelliteAccessRestrictionUsingGPS();
         }
 
         public boolean isKeepOnDeviceAccessControllerResourcesTimerStarted() {
