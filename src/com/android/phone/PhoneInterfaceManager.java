@@ -10776,10 +10776,20 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
     @Override
     @TelephonyManager.IsMultiSimSupportedResult
     public int isMultiSimSupported(String callingPackage, String callingFeatureId) {
-        if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(mApp,
-                getDefaultPhone().getSubId(), callingPackage, callingFeatureId,
-                "isMultiSimSupported")) {
-            return TelephonyManager.MULTISIM_NOT_SUPPORTED_BY_HARDWARE;
+        if (mFeatureFlags.macroBasedOpportunisticNetworks()) {
+            if (!TelephonyPermissions.checkCallingOrSelfReadNonDangerousPhoneStateNoThrow(mApp,
+                    "isMultiSimSupported")
+                    && !TelephonyPermissions.checkCallingOrSelfReadPhoneState(mApp,
+                    getDefaultPhone().getSubId(), callingPackage, callingFeatureId,
+                    "isMultiSimSupported")) {
+                throw new SecurityException("Caller does not have permission.");
+            }
+        } else {
+            if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(mApp,
+                    getDefaultPhone().getSubId(), callingPackage, callingFeatureId,
+                    "isMultiSimSupported")) {
+                return TelephonyManager.MULTISIM_NOT_SUPPORTED_BY_HARDWARE;
+            }
         }
 
         enforceTelephonyFeatureWithException(callingPackage,
