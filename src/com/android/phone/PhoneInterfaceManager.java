@@ -10735,10 +10735,14 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
         Phone phone = PhoneFactory.getPhone(slotIndex);
         if (phone == null) return false;
 
-        if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(
-                mApp, phone.getSubId(), callingPackage, callingFeatureId,
-                "isModemEnabledForSlot")) {
-            throw new SecurityException("Requires READ_PHONE_STATE permission.");
+        if (!mFeatureFlags.macroBasedOpportunisticNetworks()
+                || !TelephonyPermissions.checkCallingOrSelfReadNonDangerousPhoneStateNoThrow(
+                mApp, "isModemEnabledForSlot")) {
+            if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(
+                    mApp, phone.getSubId(), callingPackage, callingFeatureId,
+                    "isModemEnabledForSlot")) {
+                throw new SecurityException("Caller has no permission.");
+            }
         }
 
         enforceTelephonyFeatureWithException(callingPackage,
