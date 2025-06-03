@@ -10064,8 +10064,13 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
         // we are reading iccId which is PII data.
         enforceReadPrivilegedPermission("getUiccSlotsInfo");
 
-        enforceTelephonyFeatureWithException(callingPackage,
-                PackageManager.FEATURE_TELEPHONY_SUBSCRIPTION, "getUiccSlotsInfo");
+        if (!mApp.getResources().getBoolean(
+                com.android.internal.R.bool.config_force_phone_globals_creation)) {
+            enforceTelephonyFeatureWithException(
+                    callingPackage,
+                    PackageManager.FEATURE_TELEPHONY_SUBSCRIPTION,
+                    "getUiccSlotsInfo");
+        }
 
         // checking compatibility, if calling app's target SDK is T and beyond.
         if (CompatChanges.isChangeEnabled(GET_API_SIGNATURES_FROM_UICC_PORT_INFO,
