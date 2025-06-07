@@ -1008,6 +1008,8 @@
     <string name="tty_mode_option_summary">Set TTY mode</string>
     <string name="auto_retry_mode_title">Auto-retry</string>
     <string name="auto_retry_mode_summary">Enable Auto-retry mode</string>
+    <string name="vibrating_for_outgoing_call_accepted_title">Vibrating for outgoing call accepted</string>
+    <string name="vibrating_for_outgoing_call_accepted_summary">Enable vibrating mode for outgoing call accepted</string>
     <!-- TTY Mode change is NOT allowed during a video call -->
     <string name="tty_mode_not_allowed_video_call">TTY Mode change is not allowed during a video call</string>
     <!-- FDN list screen: menu item label -->
@@ -1196,9 +1198,7 @@
     <string name="notification_network_selection_text">Selected network<xliff:g id="operator_name">%s</xliff:g> unavailable</string>
 
     <!-- In-call screen: call failure message displayed in an error dialog. [CHAR_LIMIT=NONE] -->
-    <string name="incall_error_power_off" product="watch">Turn on mobile network, turn off airplane mode or turn off battery saver mode to make a call.</string>
-    <!-- In-call screen: call failure message displayed in an error dialog. [CHAR_LIMIT=NONE] -->
-    <string name="incall_error_power_off" product="default">Turn off airplane mode to make a call.</string>
+    <string name="incall_error_power_off">Turn off airplane mode to make a call.</string>
     <!-- In-call screen: call failure message displayed in an error dialog when in airplane mode, WFC is enabled, not wifi-only, and not connected to wireless networks. [CHAR_LIMIT=NONE] -->
     <string name="incall_error_power_off_wfc">Turn off airplane mode or connect to a wireless network to make a call.</string>
     <!-- In-call screen: call failure message displayed in an error dialog when radio off due to thermal mitigation. [CHAR_LIMIT=NONE] -->

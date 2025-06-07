@@ -492,6 +492,7 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
     private static final int LINE1_NUMBER_MAX_LEN = 50;
 
     private static final String CTS_PACKAGE = "android.telephony.cts";
+    private static final String PHONE_PACKAGE = "com.android.phone";
     private boolean mIsInCtsMode = false;
 
     /**
@@ -2497,7 +2498,7 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
         mApp = app;
         mFeatureFlags = featureFlags;
         mTelecomFeatureFlags = new com.android.server.telecom.flags.FeatureFlagsImpl();
-        mCM = PhoneGlobals.getInstance().getCallManager();
+        mCM = PhoneGlobals.getInstance().mCM;
         mImsResolver = ImsResolver.getInstance();
         mSatelliteController = SatelliteController.getInstance();
         mUserManager = (UserManager) app.getSystemService(Context.USER_SERVICE);
@@ -9959,6 +9960,7 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
 
         boolean hasReadPermission = false;
         boolean isIccIdAccessRestricted = false;
+        boolean hasOnlyReadBasicPermission = false;
         try {
             enforceReadPrivilegedPermission("getUiccCardsInfo");
             hasReadPermission = true;
@@ -9967,7 +9969,14 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
             // has carrier privileges on an active UICC
             if (checkCarrierPrivilegesForPackageAnyPhoneWithPermission(callingPackage)
                     != TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS) {
-                throw new SecurityException("Caller does not have permission.");
+                if (!mFeatureFlags.macroBasedOpportunisticNetworks()
+                        ||
+                        !TelephonyPermissions.checkCallingOrSelfReadNonDangerousPhoneStateNoThrow(
+                        mApp, "getUiccCardsInfo")) {
+                    throw new SecurityException("Caller does not have permission.");
+                } else {
+                    hasOnlyReadBasicPermission = true;
+                }
             }
         }
 
@@ -9992,17 +10001,25 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
             for (UiccCardInfo cardInfo : cardInfos) {
                 //setting the value after compatibility check
                 cardInfo.setIccIdAccessRestricted(isIccIdAccessRestricted);
+                // If caller has only READ_BASIC_PHONE_STATE, return minimum info
+                if (mFeatureFlags.macroBasedOpportunisticNetworks() && hasOnlyReadBasicPermission) {
+                    filteredInfos.add(cardInfo.createSensitiveInfoSanitizedCopy(
+                            false /* hasCarrierPrivileges */));
+                    continue;
+                }
                 // For an inactive eUICC, the UiccCard will be null even though the UiccCardInfo
                 // is available
                 UiccCard card = uiccController.getUiccCardForSlot(cardInfo.getPhysicalSlotIndex());
                 if (card == null) {
                     // assume no access if the card is unavailable
-                    filteredInfos.add(getUiccCardInfoUnPrivileged(cardInfo));
+                    filteredInfos.add(cardInfo.createSensitiveInfoSanitizedCopy(
+                            true /* hasCarrierPrivileges */));
                     continue;
                 }
                 Collection<UiccPortInfo> portInfos = cardInfo.getPorts();
                 if (portInfos.isEmpty()) {
-                    filteredInfos.add(getUiccCardInfoUnPrivileged(cardInfo));
+                    filteredInfos.add(cardInfo.createSensitiveInfoSanitizedCopy(
+                            true /* hasCarrierPrivileges */));
                     continue;
                 }
                 List<UiccPortInfo> uiccPortInfos = new  ArrayList<>();
@@ -10011,13 +10028,13 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
                             cardInfo.getPhysicalSlotIndex(), portInfo.getPortIndex());
                     if (port == null) {
                         // assume no access if port is null
-                        uiccPortInfos.add(getUiccPortInfoUnPrivileged(portInfo));
+                        uiccPortInfos.add(portInfo.createSensitiveInfoSanitizedCopy());
                         continue;
                     }
                     if (haveCarrierPrivilegeAccess(port, callingPackage)) {
                         uiccPortInfos.add(portInfo);
                     } else {
-                        uiccPortInfos.add(getUiccPortInfoUnPrivileged(portInfo));
+                        uiccPortInfos.add(portInfo.createSensitiveInfoSanitizedCopy());
                     }
                 }
                 filteredInfos.add(new UiccCardInfo(
@@ -10035,43 +10052,6 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
         }
     }
 
-    /**
-     * Returns a copy of the UiccCardinfo with the EID and ICCID set to null. These values are
-     * generally private and require carrier privileges to view.
-     *
-     * @hide
-     */
-    @NonNull
-    public UiccCardInfo getUiccCardInfoUnPrivileged(UiccCardInfo cardInfo) {
-        List<UiccPortInfo> portinfo = new  ArrayList<>();
-        for (UiccPortInfo portinfos : cardInfo.getPorts()) {
-            portinfo.add(getUiccPortInfoUnPrivileged(portinfos));
-        }
-        return new UiccCardInfo(
-                cardInfo.isEuicc(),
-                cardInfo.getCardId(),
-                null,
-                cardInfo.getPhysicalSlotIndex(),
-                cardInfo.isRemovable(),
-                cardInfo.isMultipleEnabledProfilesSupported(),
-                portinfo
-        );
-    }
-
-    /**
-     * @hide
-     * @return a copy of the UiccPortInfo with ICCID set to {@link UiccPortInfo#ICCID_REDACTED}.
-     * These values are generally private and require carrier privileges to view.
-     */
-    @NonNull
-    public UiccPortInfo getUiccPortInfoUnPrivileged(UiccPortInfo portInfo) {
-        return new UiccPortInfo(
-                UiccPortInfo.ICCID_REDACTED,
-                portInfo.getPortIndex(),
-                portInfo.getLogicalSlotIndex(),
-                portInfo.isActive()
-        );
-    }
     @Override
     public UiccSlotInfo[] getUiccSlotsInfo(String callingPackage) {
         // Verify that the callingPackage belongs to the calling UID
@@ -10735,10 +10715,14 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
         Phone phone = PhoneFactory.getPhone(slotIndex);
         if (phone == null) return false;
 
-        if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(
-                mApp, phone.getSubId(), callingPackage, callingFeatureId,
-                "isModemEnabledForSlot")) {
-            throw new SecurityException("Requires READ_PHONE_STATE permission.");
+        if (!mFeatureFlags.macroBasedOpportunisticNetworks()
+                || !TelephonyPermissions.checkCallingOrSelfReadNonDangerousPhoneStateNoThrow(
+                mApp, "isModemEnabledForSlot")) {
+            if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(
+                    mApp, phone.getSubId(), callingPackage, callingFeatureId,
+                    "isModemEnabledForSlot")) {
+                throw new SecurityException("Caller has no permission.");
+            }
         }
 
         enforceTelephonyFeatureWithException(callingPackage,
@@ -10776,10 +10760,20 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
     @Override
     @TelephonyManager.IsMultiSimSupportedResult
     public int isMultiSimSupported(String callingPackage, String callingFeatureId) {
-        if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(mApp,
-                getDefaultPhone().getSubId(), callingPackage, callingFeatureId,
-                "isMultiSimSupported")) {
-            return TelephonyManager.MULTISIM_NOT_SUPPORTED_BY_HARDWARE;
+        if (mFeatureFlags.macroBasedOpportunisticNetworks()) {
+            if (!TelephonyPermissions.checkCallingOrSelfReadNonDangerousPhoneStateNoThrow(mApp,
+                    "isMultiSimSupported")
+                    && !TelephonyPermissions.checkCallingOrSelfReadPhoneState(mApp,
+                    getDefaultPhone().getSubId(), callingPackage, callingFeatureId,
+                    "isMultiSimSupported")) {
+                throw new SecurityException("Caller does not have permission.");
+            }
+        } else {
+            if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(mApp,
+                    getDefaultPhone().getSubId(), callingPackage, callingFeatureId,
+                    "isMultiSimSupported")) {
+                return TelephonyManager.MULTISIM_NOT_SUPPORTED_BY_HARDWARE;
+            }
         }
 
         enforceTelephonyFeatureWithException(callingPackage,
@@ -15413,10 +15407,7 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
     private boolean shouldIgnoreSatelliteRequestInCtsMode(
         @NonNull String methodName, @Nullable Object resultCallback) {
         if (mIsInCtsMode) {
-            String callingPackage = getCurrentPackageName();
-            if (!TextUtils.equals(callingPackage, CTS_PACKAGE)) {
-                Log.d(LOG_TAG, methodName + " requested by " + callingPackage
-                    + " is ignored in CTS mode");
+            if (!isCallingPackageAllowedInCtsMode(methodName)) {
                 if (resultCallback == null) return true;
 
                 if (resultCallback instanceof ResultReceiver) {
@@ -15430,6 +15421,25 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
                 return true;
             }
         }
+        return false;
+    }
+
+    private boolean isCallingPackageAllowedInCtsMode(String methodName) {
+        PackageManager pm = mApp.getBaseContext().createContextAsUser(
+                Binder.getCallingUserHandle(), 0).getPackageManager();
+        if (pm == null) return false;
+        String[] callingPackages = pm.getPackagesForUid(Binder.getCallingUid());
+        if (callingPackages == null) return false;
+
+        for (String callingPackage : callingPackages) {
+            if (TextUtils.equals(callingPackage, CTS_PACKAGE)
+                    || TextUtils.equals(callingPackage, PHONE_PACKAGE)) {
+                return true;
+            }
+        }
+        Log.d(LOG_TAG, "isCallingPackageAllowedInCtsMode: calling packages="
+                + String.join(",", callingPackages) + " is not allowed in CTS mode"
+                + " for method: " + methodName);
         return false;
     }
 }
