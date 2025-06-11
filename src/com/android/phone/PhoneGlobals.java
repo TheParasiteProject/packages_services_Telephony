@@ -50,6 +50,7 @@ import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyCallback;
 import android.telephony.TelephonyLocalConnection;
 import android.telephony.TelephonyManager;
+import android.telephony.TelephonyServicesInitializer;
 import android.text.TextUtils;
 import android.util.ArraySet;
 import android.util.LocalLog;
@@ -546,6 +547,10 @@ public class PhoneGlobals extends ContextWrapper {
             String dssComponentName = getResources().getString(
                     R.string.config_domain_selection_service_component_name);
             DomainSelectionResolver.make(this, dssComponentName);
+
+            if (mFeatureFlags.enablePhoneNumberParsingApi()) {
+                TelephonyServicesInitializer.initialize();
+            }
 
             // Initialize the telephony framework
             PhoneFactory.makeDefaultPhones(this, mFeatureFlags);
