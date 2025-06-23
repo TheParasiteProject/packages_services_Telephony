@@ -15237,11 +15237,6 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
      */
     @Override
     public boolean setSatelliteSubscriberIdListChangedIntentComponent(String name) {
-        if (!mFeatureFlags.carrierRoamingNbIotNtn()) {
-            Log.d(LOG_TAG, "setSatelliteSubscriberIdListChangedIntentComponent:"
-                    + " carrierRoamingNbIotNtn is disabled");
-            return false;
-        }
         Log.d(LOG_TAG, "setSatelliteSubscriberIdListChangedIntentComponent");
         TelephonyPermissions.enforceShellOnly(
                 Binder.getCallingUid(), "setSatelliteSubscriberIdListChangedIntentComponent");
