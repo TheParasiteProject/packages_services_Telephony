@@ -7775,9 +7775,12 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
     public List<String> getCarrierPackageNamesForIntentAndPhone(Intent intent, int phoneId) {
         enforceReadPrivilegedPermission("getCarrierPackageNamesForIntentAndPhone");
 
-        enforceTelephonyFeatureWithException(getCurrentPackageName(),
+        if (!mApp.getResources().getBoolean(
+                    com.android.internal.R.bool.config_force_phone_globals_creation)) {
+            enforceTelephonyFeatureWithException(getCurrentPackageName(),
                 PackageManager.FEATURE_TELEPHONY_SUBSCRIPTION,
                 "getCarrierPackageNamesForIntentAndPhone");
+        }
 
         Phone phone = PhoneFactory.getPhone(phoneId);
         if (phone == null) {
