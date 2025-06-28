@@ -83,6 +83,7 @@ import com.android.internal.telephony.d2d.RtpAdapter;
 import com.android.internal.telephony.d2d.RtpTransport;
 import com.android.internal.telephony.d2d.Timeouts;
 import com.android.internal.telephony.d2d.TransportProtocol;
+import com.android.internal.telephony.flags.Flags;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneCall;
@@ -344,6 +345,7 @@ abstract class TelephonyConnection extends Connection implements Holdable, Commu
                         updateConnectionProperties();
                         refreshConferenceSupported();
                     }
+                    updateConnectionCapabilities();
                     sendRttInitiationSuccess();
                     break;
                 case MSG_HOLD:
@@ -788,6 +790,7 @@ abstract class TelephonyConnection extends Connection implements Holdable, Commu
 
         @Override
         public void onRttTerminated() {
+            updateConnectionCapabilities();
             updateConnectionProperties();
             refreshConferenceSupported();
             sendRttSessionRemotelyTerminated();
@@ -1430,7 +1433,20 @@ abstract class TelephonyConnection extends Connection implements Holdable, Commu
         if (mOriginalConnection != null && mOriginalConnection.isIncoming()) {
             callCapabilities |= CAPABILITY_SPEED_UP_MT_AUDIO;
         }
-        if (!shouldTreatAsEmergencyCall() && isImsConnection() && canHoldImsCalls()) {
+
+        boolean allowHold = false;
+        if (!shouldTreatAsEmergencyCall() && isImsConnection()) {
+            if (Flags.enableRttHoldCarrierConfig() && isRtt()) {
+                Log.d(this,
+                    "buildConnectionCapabilities: Call is RTT, evaluating hold capabilities.");
+                allowHold = canHoldImsCalls() && canHoldRttCalls();
+                Log.d(this, "buildConnectionCapabilities: RTT hold allowed = " + allowHold);
+            } else {
+                allowHold = canHoldImsCalls();
+            }
+        }
+
+        if (allowHold) {
             callCapabilities |= CAPABILITY_SUPPORT_HOLD;
             if (mIsHoldable && (getState() == STATE_ACTIVE || getState() == STATE_HOLDING)) {
                 callCapabilities |= CAPABILITY_HOLD;
@@ -1965,6 +1981,24 @@ abstract class TelephonyConnection extends Connection implements Holdable, Commu
                 b.getBoolean(CarrierConfigManager.KEY_ALLOW_HOLD_IN_IMS_CALL_BOOL)) &&
                 ((mOriginalConnection != null && mOriginalConnection.shouldAllowHoldingVideoCall())
                 || !VideoProfile.isVideo(getVideoState()));
+    }
+
+    /**
+     * Determines if holding an RTT call is permitted based on carrier configuration.
+     *
+     * @return {@code true} if RTT calls can be held.
+     */
+    private boolean canHoldRttCalls() {
+        PersistableBundle carrierConfig = getCarrierConfig();
+        if (carrierConfig == null) {
+            Log.w(this, "canHoldRttCalls: CarrierConfig is unavailable. Defaulting to true.");
+            return true;
+        }
+
+        boolean isHoldRttCallAllowed =
+                carrierConfig.getBoolean(CarrierConfigManager.KEY_ALLOW_HOLD_IN_RTT_CALL_BOOL);
+        Log.d(this, "canHoldRttCalls: KEY_ALLOW_HOLD_IN_RTT_CALL_BOOL=" + isHoldRttCallAllowed);
+        return isHoldRttCallAllowed;
     }
 
     private boolean isConferenceHosted() {
