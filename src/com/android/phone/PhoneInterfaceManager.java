@@ -10138,12 +10138,22 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
                     portInfos.add(new UiccPortInfo(iccId, portIdx,
                             slot.getPhoneIdFromPortIndex(portIdx), slot.isPortActive(portIdx)));
                 }
-                infos[i] = new UiccSlotInfo(
-                        slot.isEuicc(),
-                        cardId,
-                        cardState,
-                        slot.isExtendedApduSupported(),
-                        slot.isRemovable(), portInfos);
+                if (mFeatureFlags.supportSlotSwitching2psim1esimConfig()) {
+                    infos[i] = new UiccSlotInfo(
+                            slot.isEuicc(),
+                            cardId,
+                            cardState,
+                            slot.isExtendedApduSupported(),
+                            slot.isRemovable(), portInfos, slot.getSimType(),
+                            slot.getSupportedSimTypes());
+                } else {
+                    infos[i] = new UiccSlotInfo(
+                            slot.isEuicc(),
+                            cardId,
+                            cardState,
+                            slot.isExtendedApduSupported(),
+                            slot.isRemovable(), portInfos);
+                }
                 //setting the value after compatibility check
                 infos[i].setLogicalSlotAccessRestricted(isLogicalSlotAccessRestricted);
             }
@@ -10939,8 +10949,14 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
                         for (UiccPortInfo portInfo : slotInfo.getPorts()) {
                             if (SubscriptionManager.isValidPhoneId(
                                     portInfo.getLogicalSlotIndex())) {
-                                slotMap.add(new UiccSlotMapping(portInfo.getPortIndex(), i,
-                                        portInfo.getLogicalSlotIndex()));
+                                if (mFeatureFlags.supportSlotSwitching2psim1esimConfig()) {
+                                    slotMap.add(new UiccSlotMapping(portInfo.getPortIndex(), i,
+                                            portInfo.getLogicalSlotIndex(),
+                                            slotInfo.getSimType()));
+                                } else {
+                                    slotMap.add(new UiccSlotMapping(portInfo.getPortIndex(), i,
+                                            portInfo.getLogicalSlotIndex()));
+                                }
                             }
                         }
                     } else {
