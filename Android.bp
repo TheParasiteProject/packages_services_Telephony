@@ -44,6 +44,7 @@ android_app {
         "PlatformProperties",
         "modules-utils-fastxmlserializer",
         "SettingsLib",
+        "SettingsLibSettingsTheme",
         "modules-utils-os",
         "nist-sip",
         "service-entitlement",
