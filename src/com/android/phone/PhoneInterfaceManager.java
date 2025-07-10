@@ -7677,8 +7677,12 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
 
     @Override
     public int getCarrierPrivilegeStatus(int subId) {
-        enforceTelephonyFeatureWithException(getCurrentPackageName(),
-                PackageManager.FEATURE_TELEPHONY_SUBSCRIPTION, "getCarrierPrivilegeStatus");
+        if (!mApp.getResources().getBoolean(
+                    com.android.internal.R.bool.config_force_phone_globals_creation)) {
+            enforceTelephonyFeatureWithException(getCurrentPackageName(),
+                    PackageManager.FEATURE_TELEPHONY_SUBSCRIPTION,
+                    "getCarrierPrivilegeStatus");
+        }
 
         // No permission needed; this only lets the caller inspect their own status.
         return getCarrierPrivilegeStatusForUidWithPermission(subId, Binder.getCallingUid());
@@ -13143,9 +13147,13 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
         }
         TelephonyManager.EmergencyCallDiagnosticData ecdData = ecdDataBuilder.build();
         Log.d(LOG_TAG, "persisting with Params " + ecdData.toString());
-        DiagnosticDataCollector ddc = new DiagnosticDataCollector(Runtime.getRuntime(),
+        DiagnosticDataCollector ddc = new DiagnosticDataCollector(
+                Runtime.getRuntime(),
                 Executors.newCachedThreadPool(), db,
-                mApp.getSystemService(ActivityManager.class).isLowRamDevice());
+                mApp.getSystemService(ActivityManager.class).isLowRamDevice(),
+                mApp.getSystemService(ActivityManager.class),
+                mApp.getResources().getStringArray(R.array.ecc_log_sources_process_names),
+                mApp.getResources().getStringArray(R.array.ecc_log_sources_tags));
         ddc.persistEmergencyDianosticData(new DataCollectorConfig.Adapter(), ecdData, dropboxTag);
     }
 
