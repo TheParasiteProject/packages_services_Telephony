@@ -309,14 +309,6 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
     private static final int EVENT_OPEN_CHANNEL_DONE = 10;
     private static final int CMD_CLOSE_CHANNEL = 11;
     private static final int EVENT_CLOSE_CHANNEL_DONE = 12;
-    private static final int CMD_NV_READ_ITEM = 13;
-    private static final int EVENT_NV_READ_ITEM_DONE = 14;
-    private static final int CMD_NV_WRITE_ITEM = 15;
-    private static final int EVENT_NV_WRITE_ITEM_DONE = 16;
-    private static final int CMD_NV_WRITE_CDMA_PRL = 17;
-    private static final int EVENT_NV_WRITE_CDMA_PRL_DONE = 18;
-    private static final int CMD_RESET_MODEM_CONFIG = 19;
-    private static final int EVENT_RESET_MODEM_CONFIG_DONE = 20;
     private static final int CMD_GET_ALLOWED_NETWORK_TYPES_BITMASK = 21;
     private static final int EVENT_GET_ALLOWED_NETWORK_TYPES_BITMASK_DONE = 22;
     private static final int CMD_SEND_ENVELOPE = 25;
@@ -366,8 +358,6 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
     private static final int EVENT_GET_MODEM_STATUS_DONE = 71;
     private static final int CMD_SET_FORBIDDEN_PLMNS = 72;
     private static final int EVENT_SET_FORBIDDEN_PLMNS_DONE = 73;
-    private static final int CMD_ERASE_MODEM_CONFIG = 74;
-    private static final int EVENT_ERASE_MODEM_CONFIG_DONE = 75;
     private static final int CMD_CHANGE_ICC_LOCK_PASSWORD = 76;
     private static final int EVENT_CHANGE_ICC_LOCK_PASSWORD_DONE = 77;
     private static final int CMD_SET_ICC_LOCK_ENABLED = 78;
@@ -921,54 +911,6 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
                                         "exception from modem to close iccLogical Channel");
                     }
                     notifyRequester(request);
-                    break;
-
-                case CMD_NV_READ_ITEM:
-                    request = (MainThreadRequest) msg.obj;
-                    onCompleted = obtainMessage(EVENT_NV_READ_ITEM_DONE, request);
-                    defaultPhone.nvReadItem((Integer) request.argument, onCompleted,
-                            request.workSource);
-                    break;
-
-                case EVENT_NV_READ_ITEM_DONE:
-                    ar = (AsyncResult) msg.obj;
-                    request = (MainThreadRequest) ar.userObj;
-                    if (ar.exception == null && ar.result != null) {
-                        request.result = ar.result;     // String
-                    } else {
-                        request.result = "";
-                        if (ar.result == null) {
-                            loge("nvReadItem: Empty response");
-                        } else if (ar.exception instanceof CommandException) {
-                            loge("nvReadItem: CommandException: " +
-                                    ar.exception);
-                        } else {
-                            loge("nvReadItem: Unknown exception");
-                        }
-                    }
-                    notifyRequester(request);
-                    break;
-
-                case CMD_NV_WRITE_ITEM:
-                    request = (MainThreadRequest) msg.obj;
-                    onCompleted = obtainMessage(EVENT_NV_WRITE_ITEM_DONE, request);
-                    Pair<Integer, String> idValue = (Pair<Integer, String>) request.argument;
-                    defaultPhone.nvWriteItem(idValue.first, idValue.second, onCompleted,
-                            request.workSource);
-                    break;
-
-                case EVENT_NV_WRITE_ITEM_DONE:
-                    handleNullReturnEvent(msg, "nvWriteItem");
-                    break;
-
-                case CMD_RESET_MODEM_CONFIG:
-                    request = (MainThreadRequest) msg.obj;
-                    onCompleted = obtainMessage(EVENT_RESET_MODEM_CONFIG_DONE, request);
-                    defaultPhone.resetModemConfig(onCompleted);
-                    break;
-
-                case EVENT_RESET_MODEM_CONFIG_DONE:
-                    handleNullReturnEvent(msg, "resetModemConfig");
                     break;
 
                 case CMD_IS_NR_DUAL_CONNECTIVITY_ENABLED: {
@@ -1923,14 +1865,6 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
                         ((SIMRecords) uiccApp.getIccRecords())
                                 .setForbiddenPlmns(onCompleted, fplmns);
                     }
-                    break;
-                case CMD_ERASE_MODEM_CONFIG:
-                    request = (MainThreadRequest) msg.obj;
-                    onCompleted = obtainMessage(EVENT_ERASE_MODEM_CONFIG_DONE, request);
-                    defaultPhone.eraseModemConfig(onCompleted);
-                    break;
-                case EVENT_ERASE_MODEM_CONFIG_DONE:
-                    handleNullReturnEvent(msg, "eraseModemConfig");
                     break;
 
                 case CMD_ERASE_DATA_SHARED_PREFERENCES:
