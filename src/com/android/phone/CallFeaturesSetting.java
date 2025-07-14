@@ -59,7 +59,6 @@ import com.android.ims.ImsException;
 import com.android.ims.ImsManager;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
-import com.android.internal.telephony.flags.Flags;
 import com.android.phone.settings.PhoneAccountSettingsFragment;
 import com.android.phone.settings.SuppServicesUiUtil;
 import com.android.phone.settings.VoicemailSettingsActivity;
@@ -456,42 +455,36 @@ public class CallFeaturesSetting extends PreferenceActivity
         Preference gsmOptions = prefSet.findPreference(BUTTON_GSM_UMTS_OPTIONS);
         Preference fdnButton = prefSet.findPreference(BUTTON_FDN_KEY);
         fdnButton.setIntent(mSubscriptionInfoHelper.getIntent(FdnSetting.class));
-        if (!Flags.phoneTypeCleanup()
-                && carrierConfig.getBoolean(CarrierConfigManager.KEY_WORLD_PHONE_BOOL)) {
-            cdmaOptions.setIntent(mSubscriptionInfoHelper.getIntent(CdmaCallOptions.class));
-            gsmOptions.setIntent(mSubscriptionInfoHelper.getIntent(GsmUmtsCallOptions.class));
-        } else {
-            // Remove GSM options and repopulate the preferences in this Activity if phone type is
-            // GSM.
-            prefSet.removePreference(gsmOptions);
+        // Remove GSM options and repopulate the preferences in this Activity if phone type is
+        // GSM.
+        prefSet.removePreference(gsmOptions);
 
-            int phoneType = mPhone.getPhoneType();
-            if (carrierConfig.getBoolean(
-                    CarrierConfigManager.KEY_HIDE_CARRIER_NETWORK_SETTINGS_BOOL)) {
+        int phoneType = mPhone.getPhoneType();
+        if (carrierConfig.getBoolean(
+                CarrierConfigManager.KEY_HIDE_CARRIER_NETWORK_SETTINGS_BOOL)) {
+            prefSet.removePreference(fdnButton);
+        } else {
+            if (phoneType == PhoneConstants.PHONE_TYPE_CDMA) {
+                // For now, just keep CdmaCallOptions as one entity. Eventually CDMA should
+                // follow the same pattern as GSM below, where VP and Call forwarding are
+                // populated here and Call waiting is populated in another "Additional Settings"
+                // submenu for CDMA.
                 prefSet.removePreference(fdnButton);
-            } else {
-                if (phoneType == PhoneConstants.PHONE_TYPE_CDMA) {
-                    // For now, just keep CdmaCallOptions as one entity. Eventually CDMA should
-                    // follow the same pattern as GSM below, where VP and Call forwarding are
-                    // populated here and Call waiting is populated in another "Additional Settings"
-                    // submenu for CDMA.
+                cdmaOptions.setSummary(null);
+                cdmaOptions.setTitle(R.string.additional_gsm_call_settings);
+                cdmaOptions.setIntent(mSubscriptionInfoHelper.getIntent(CdmaCallOptions.class));
+            } else if (phoneType == PhoneConstants.PHONE_TYPE_GSM) {
+                prefSet.removePreference(cdmaOptions);
+                if (mPhone.getIccCard() == null || !mPhone.getIccCard().getIccFdnAvailable()) {
                     prefSet.removePreference(fdnButton);
-                    cdmaOptions.setSummary(null);
-                    cdmaOptions.setTitle(R.string.additional_gsm_call_settings);
-                    cdmaOptions.setIntent(mSubscriptionInfoHelper.getIntent(CdmaCallOptions.class));
-                } else if (phoneType == PhoneConstants.PHONE_TYPE_GSM) {
-                    prefSet.removePreference(cdmaOptions);
-                    if (mPhone.getIccCard() == null || !mPhone.getIccCard().getIccFdnAvailable()) {
-                        prefSet.removePreference(fdnButton);
-                    }
-                    if (carrierConfig.getBoolean(
-                            CarrierConfigManager.KEY_ADDITIONAL_CALL_SETTING_BOOL)) {
-                        addPreferencesFromResource(R.xml.gsm_umts_call_options);
-                        GsmUmtsCallOptions.init(prefSet, mSubscriptionInfoHelper);
-                    }
-                } else {
-                    throw new IllegalStateException("Unexpected phone type: " + phoneType);
                 }
+                if (carrierConfig.getBoolean(
+                        CarrierConfigManager.KEY_ADDITIONAL_CALL_SETTING_BOOL)) {
+                    addPreferencesFromResource(R.xml.gsm_umts_call_options);
+                    GsmUmtsCallOptions.init(prefSet, mSubscriptionInfoHelper);
+                }
+            } else {
+                throw new IllegalStateException("Unexpected phone type: " + phoneType);
             }
         }
         updateVtWfc();
