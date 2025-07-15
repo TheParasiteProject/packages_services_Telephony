@@ -3886,21 +3886,6 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
     }
 
     /**
-     * Returns true if CDMA provisioning needs to run.
-     */
-    public boolean needsOtaServiceProvisioning() {
-        enforceTelephonyFeatureWithException(getCurrentPackageName(),
-                PackageManager.FEATURE_TELEPHONY_RADIO_ACCESS, "needsOtaServiceProvisioning");
-
-        final long identity = Binder.clearCallingIdentity();
-        try {
-            return getDefaultPhone().needsOtaServiceProvisioning();
-        } finally {
-            Binder.restoreCallingIdentity(identity);
-        }
-    }
-
-    /**
      * Sets the voice mail number of a given subId.
      */
     @Override

@@ -435,9 +435,6 @@ class FakeRil extends BaseCommands {
     public void reportStkServiceIsRunning(Message result) {}
 
     @Override
-    public void getCdmaSubscriptionSource(Message response) {}
-
-    @Override
     public void getGsmBroadcastConfig(Message response) {}
 
     @Override
@@ -454,9 +451,6 @@ class FakeRil extends BaseCommands {
     public void getImei(Message response) {}
 
     @Override
-    public void getCDMASubscription(Message response) {}
-
-    @Override
     public void setPhoneType(int phoneType) {}
 
     @Override
@@ -466,16 +460,10 @@ class FakeRil extends BaseCommands {
     public void setCdmaRoamingPreference(int cdmaRoamingType, Message response) {}
 
     @Override
-    public void setCdmaSubscriptionSource(int cdmaSubscription, Message response) {}
-
-    @Override
     public void queryTTYMode(Message response) {}
 
     @Override
     public void setTTYMode(int ttyMode, Message response) {}
-
-    @Override
-    public void sendCDMAFeatureCode(String featureCode, Message response) {}
 
     @Override
     public void getCdmaBroadcastConfig(Message response) {}
