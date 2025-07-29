@@ -3422,6 +3422,17 @@ abstract class TelephonyConnection extends Connection implements Holdable, Commu
      */
     public void setTelephonyConnectionDisconnected(@NonNull
             android.telecom.DisconnectCause disconnectCause) {
+        if (disconnectCause.getCode() == android.telecom.DisconnectCause.ANSWERED_ELSEWHERE) {
+            PersistableBundle carrierConfig = getCarrierConfig();
+            if (carrierConfig != null && !carrierConfig.getBoolean(
+                    CarrierConfigManager.KEY_LOG_CALLS_ANSWERED_ELSEWHERE_BOOL, true)) {
+                Log.i(this, "setTelephonyConnectionDisconnected: skip logging call answered "
+                        + "elsewhere based on carrier requirements.");
+                Bundle extras = new Bundle();
+                extras.putBoolean(TelecomManager.EXTRA_DO_NOT_LOG_CALL, true);
+                putTelephonyExtras(extras);
+            }
+        }
         setDisconnected(disconnectCause);
         notifyDisconnected(disconnectCause);
         notifyStateChanged(getState());
