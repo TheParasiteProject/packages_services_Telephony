@@ -4440,22 +4440,28 @@ public class TelephonyConnectionService extends ConnectionService {
             Log.d(this, "Adding IMS connection to conference controller: " + connection);
             mImsConferenceController.add(connection);
             mTelephonyConferenceController.remove(connection);
-            if (connection instanceof CdmaConnection) {
-                mCdmaConferenceController.remove((CdmaConnection) connection);
+            if (!mFeatureFlags.deleteCdma()) {
+                if (connection instanceof CdmaConnection) {
+                    mCdmaConferenceController.remove((CdmaConnection) connection);
+                }
             }
         } else {
             int phoneType = connection.getCall().getPhone().getPhoneType();
             if (phoneType == TelephonyManager.PHONE_TYPE_GSM) {
                 Log.d(this, "Adding GSM connection to conference controller: " + connection);
                 mTelephonyConferenceController.add(connection);
-                if (connection instanceof CdmaConnection) {
-                    mCdmaConferenceController.remove((CdmaConnection) connection);
+                if (!mFeatureFlags.deleteCdma()) {
+                    if (connection instanceof CdmaConnection) {
+                        mCdmaConferenceController.remove((CdmaConnection) connection);
+                    }
                 }
             } else if (phoneType == TelephonyManager.PHONE_TYPE_CDMA &&
                     connection instanceof CdmaConnection) {
-                Log.d(this, "Adding CDMA connection to conference controller: " + connection);
-                mCdmaConferenceController.add((CdmaConnection) connection);
-                mTelephonyConferenceController.remove(connection);
+                if (!mFeatureFlags.deleteCdma()) {
+                    Log.d(this, "Adding CDMA connection to conference controller: " + connection);
+                    mCdmaConferenceController.add((CdmaConnection) connection);
+                    mTelephonyConferenceController.remove(connection);
+                }
             }
             Log.d(this, "Removing connection from IMS conference controller: " + connection);
             mImsConferenceController.remove(connection);
