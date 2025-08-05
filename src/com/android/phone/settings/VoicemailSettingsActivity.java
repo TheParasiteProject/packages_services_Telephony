@@ -51,7 +51,6 @@ import com.android.internal.telephony.CallForwardInfo;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
-import com.android.internal.telephony.flags.Flags;
 import com.android.internal.telephony.util.NotificationChannelController;
 import com.android.phone.EditPhoneNumberPreference;
 import com.android.phone.PhoneGlobals;
@@ -756,7 +755,7 @@ public class VoicemailSettingsActivity extends PreferenceActivity
         mNewFwdSettings = newSettings.getForwardingSettings();
 
         // Call forwarding is not suppported on CDMA.
-        if (!Flags.deleteCdma() && mPhone.getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA) {
+        if (mPhone.getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA) {
             if (DBG) log("Ignoring forwarding setting since this is CDMA phone");
             mNewFwdSettings = VoicemailProviderSettings.NO_FORWARDING;
         }
