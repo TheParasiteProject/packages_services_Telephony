@@ -3439,13 +3439,22 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
                 return new ArrayList<>();
         }
 
+        enforceTelephonyFeatureWithException(callingPackage,
+            PackageManager.FEATURE_TELEPHONY_RADIO_ACCESS, "getAllCellInfo");
+
+        mAppOps = Objects.requireNonNull(
+            getDefaultPhone().getContext().getSystemService(AppOpsManager.class));
+        mAppOps.noteOpNoThrow(
+            mAppOps.OP_READ_CELL_INFO,
+            Binder.getCallingUid(),
+            getDefaultPhone().getContext().getPackageName(),
+            getDefaultPhone().getContext().getAttributionTag(),
+            "getAllCellInfo reporting cell info");
+
         final int targetSdk = TelephonyPermissions.getTargetSdk(mApp, callingPackage);
         if (targetSdk >= android.os.Build.VERSION_CODES.Q) {
             return getCachedCellInfo();
         }
-
-        enforceTelephonyFeatureWithException(callingPackage,
-                PackageManager.FEATURE_TELEPHONY_RADIO_ACCESS, "getAllCellInfo");
 
         if (DBG_LOC) log("getAllCellInfo: is active user");
         WorkSource workSource = getWorkSource(Binder.getCallingUid());
@@ -3517,6 +3526,15 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
 
         enforceTelephonyFeatureWithException(callingPackage,
                 PackageManager.FEATURE_TELEPHONY_RADIO_ACCESS, "requestCellInfoUpdateInternal");
+
+        mAppOps = Objects.requireNonNull(
+            getDefaultPhone().getContext().getSystemService(AppOpsManager.class));
+        mAppOps.noteOpNoThrow(
+            mAppOps.OP_READ_CELL_INFO,
+            Binder.getCallingUid(),
+            getDefaultPhone().getContext().getPackageName(),
+            getDefaultPhone().getContext().getAttributionTag(),
+            "requestCellInfoUpdate reporting cell info");
 
         final Phone phone = getPhoneFromSubId(subId);
         if (phone == null) throw new IllegalArgumentException("Invalid Subscription Id: " + subId);
