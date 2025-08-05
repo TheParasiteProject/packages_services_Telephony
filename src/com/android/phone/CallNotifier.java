@@ -44,7 +44,6 @@ import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.cdma.CdmaInformationRecords.CdmaDisplayInfoRec;
 import com.android.internal.telephony.cdma.CdmaInformationRecords.CdmaSignalInfoRec;
 import com.android.internal.telephony.cdma.SignalToneUtil;
-import com.android.internal.telephony.flags.Flags;
 import com.android.internal.telephony.imsphone.ImsPhoneCallTracker;
 import com.android.internal.telephony.subscription.SubscriptionManagerService;
 
@@ -181,13 +180,11 @@ public class CallNotifier extends Handler {
      * Register for call state notifications with the CallManager.
      */
     private void registerForNotifications() {
-        if (!Flags.deleteCdma()) {
-            mCM.registerForDisconnect(this, PHONE_DISCONNECT, null);
-            mCM.registerForDisplayInfo(this, PHONE_STATE_DISPLAYINFO, null);
-            mCM.registerForSignalInfo(this, PHONE_STATE_SIGNALINFO, null);
-            mCM.registerForInCallVoicePrivacyOn(this, PHONE_ENHANCED_VP_ON, null);
-            mCM.registerForInCallVoicePrivacyOff(this, PHONE_ENHANCED_VP_OFF, null);
-        }
+        mCM.registerForDisconnect(this, PHONE_DISCONNECT, null);
+        mCM.registerForDisplayInfo(this, PHONE_STATE_DISPLAYINFO, null);
+        mCM.registerForSignalInfo(this, PHONE_STATE_SIGNALINFO, null);
+        mCM.registerForInCallVoicePrivacyOn(this, PHONE_ENHANCED_VP_ON, null);
+        mCM.registerForInCallVoicePrivacyOff(this, PHONE_ENHANCED_VP_OFF, null);
         mCM.registerForSuppServiceFailed(this, PHONE_SUPP_SERVICE_FAILED, null);
         mCM.registerForTtyModeReceived(this, PHONE_TTY_MODE_RECEIVED, null);
     }
@@ -280,6 +277,8 @@ public class CallNotifier extends Handler {
     private class InCallTonePlayer extends Thread {
         private int mToneId;
         private int mState;
+        // The possible tones we can play.
+        public static final int TONE_NONE = 0;
         public static final int TONE_VOICE_PRIVACY = 5;
 
         // The tone volume relative to other sounds in the stream
@@ -358,7 +357,7 @@ public class CallNotifier extends Handler {
 
             if (toneGenerator != null) {
                 int ringerMode = mAudioManager.getRingerMode();
-                if (!Flags.deleteCdma() && phoneType == PhoneConstants.PHONE_TYPE_CDMA) {
+                if (phoneType == PhoneConstants.PHONE_TYPE_CDMA) {
                     if (toneType == ToneGenerator.TONE_CDMA_ALERT_CALL_GUARD) {
                         if ((ringerMode != AudioManager.RINGER_MODE_SILENT) &&
                                 (ringerMode != AudioManager.RINGER_MODE_VIBRATE)) {

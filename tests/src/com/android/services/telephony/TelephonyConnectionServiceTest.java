@@ -2265,6 +2265,8 @@ public class TelephonyConnectionServiceTest extends TelephonyTestBase {
 
         ImsManager imsManager = Mockito.mock(ImsManager.class);
         doReturn(false).when(imsManager).isNonTtyOrTtyOnVolteEnabled();
+        replaceInstance(TelephonyConnectionService.class,
+                "mImsManager", mTestConnectionService, imsManager);
 
         int selectedDomain = DOMAIN_PS;
 
