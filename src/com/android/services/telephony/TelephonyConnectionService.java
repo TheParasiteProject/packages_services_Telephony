@@ -847,6 +847,11 @@ public class TelephonyConnectionService extends ConnectionService {
                                         new FlagsAdapterImpl()));
                         mEmergencyConnection.close();
 
+                        // Handled in the same way as handling the DISCONNECTED state.
+                        if (Flags.ignoreStateDetailsUpdateForDomainReselection()) {
+                            mEmergencyConnection.updateStateDetails();
+                        }
+
                         TelephonyConnection c = mEmergencyConnection;
                         mEmergencyConnection.removeTelephonyConnectionListener(
                                 mEmergencyConnectionListener);
@@ -895,6 +900,12 @@ public class TelephonyConnectionService extends ConnectionService {
                                                     new FlagsAdapterImpl()));
 
                                     mNormalCallConnection.close();
+
+                                    // Handled in the same way as handling the DISCONNECTED state.
+                                    if (Flags.ignoreStateDetailsUpdateForDomainReselection()) {
+                                        mNormalCallConnection.updateStateDetails();
+                                    }
+
                                     mNormalCallConnection = null;
                                 } else {
                                     Log.v(this, "NormalCallConnection is null.");
@@ -904,6 +915,12 @@ public class TelephonyConnectionService extends ConnectionService {
 
                             } else {
                                 Log.v(this, "DomainSelectionConnection is null.");
+
+                                // Handled in the same way as handling the DISCONNECTED state.
+                                if (mNormalCallConnection != null
+                                        && Flags.ignoreStateDetailsUpdateForDomainReselection()) {
+                                    mNormalCallConnection.updateStateDetails();
+                                }
                             }
                         }
                     });

@@ -966,6 +966,12 @@ abstract class TelephonyConnection extends Connection implements Holdable, Commu
     private Integer mEmergencyServiceCategory = null;
     private List<String> mEmergencyUrns = null;
 
+    /**
+     * Indicates a flag to not perform the state details update during the domain reselection
+     * after a call failure.
+     */
+    private boolean mIsDomainReselectionInProgress;
+
     protected TelephonyConnection(com.android.internal.telephony.Connection originalConnection,
             String callId, int callDirection) {
         setCallDirection(callDirection);
@@ -2526,6 +2532,10 @@ abstract class TelephonyConnection extends Connection implements Holdable, Commu
                 getTelecomCallId());
 
         if (mConnectionState != newState) {
+            // This flag should be reset if the call redial proceeds normally
+            // after domain reselection is successfully performed.
+            mIsDomainReselectionInProgress = false;
+
             mConnectionState = newState;
             switch (newState) {
                 case IDLE:
@@ -2585,6 +2595,7 @@ abstract class TelephonyConnection extends Connection implements Holdable, Commu
                         if (mTelephonyConnectionService.maybeReselectDomain(this, reasonInfo,
                                 mShowPreciseFailedCause, mHangupDisconnectCause)) {
                             clearOriginalConnection();
+                            mIsDomainReselectionInProgress = true;
                             break;
                         }
                     }
@@ -2647,6 +2658,16 @@ abstract class TelephonyConnection extends Connection implements Holdable, Commu
         }
 
         updateStateInternal();
+
+        if (Flags.ignoreStateDetailsUpdateForDomainReselection()
+                && mIsDomainReselectionInProgress) {
+            Log.d(this, "updateState: ignore state details update for domain reselection");
+        } else {
+            updateStateDetails();
+        }
+    }
+
+    void updateStateDetails() {
         updateStatusHints();
         updateConnectionCapabilities();
         updateConnectionProperties();
@@ -2727,6 +2748,7 @@ abstract class TelephonyConnection extends Connection implements Holdable, Commu
 
     public void close() {
         Log.v(this, "close");
+        mIsDomainReselectionInProgress = false;
         clearOriginalConnection();
         destroy();
         if (mTelephonyConnectionService != null) {
