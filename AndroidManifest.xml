@@ -21,6 +21,8 @@
         android:sharedUserId="android.uid.phone"
         android:sharedUserLabel="@string/phoneAppLabel">
 
+    <attribution android:tag="telephony" android:label="@string/telephony_attribution_tag"/>
+
     <!-- Allows broadcasting for SlicePurchaseController events. -->
     <protected-broadcast android:name="com.android.phone.slice.action.START_SLICE_PURCHASE_APP" />
     <protected-broadcast android:name="com.android.phone.slice.action.SLICE_PURCHASE_APP_RESPONSE_TIMEOUT" />
