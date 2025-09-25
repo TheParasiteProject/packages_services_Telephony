@@ -681,7 +681,7 @@
     <string name="sim_label_emergency_calls" msgid="9078241989421522310">"مكالمات الطوارئ"</string>
     <string name="sim_description_emergency_calls" msgid="5146872803938897296">"مكالمات الطوارئ فقط"</string>
     <string name="sim_description_default" msgid="7474671114363724971">"‏شريحة SIM، المنفذ: <xliff:g id="SLOT_ID">%s</xliff:g>"</string>
-    <string name="accessibility_settings_activity_title" msgid="7883415189273700298">"إعدادات تمكين الوصول"</string>
+    <string name="accessibility_settings_activity_title" msgid="7883415189273700298">"تسهيل الاستخدام"</string>
     <string name="status_hint_label_incoming_wifi_call" msgid="2606052595898044071">"‏مكالمة Wi-Fi من"</string>
     <string name="status_hint_label_wifi_call" msgid="942993035689809853">"‏مكالمة عبر Wi-Fi"</string>
     <string name="message_decode_error" msgid="1061856591500290887">"حدث خطأ أثناء فك ترميز الرسالة."</string>
