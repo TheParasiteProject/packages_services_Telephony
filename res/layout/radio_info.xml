@@ -336,7 +336,8 @@
 
 
         <!-- Simulate this SIM to be satellite -->
-        <Switch android:id="@+id/mock_carrier_roaming_satellite"
+        <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/mock_carrier_roaming_satellite"
                 android:textSize="14sp"
                 android:layout_marginTop="8dip"
                 android:layout_width="match_parent"
